@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>감자배구</title>
+<style>
+  :root {
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #ece4d3;
+    font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #3b332a;
+    padding: 20px 12px 40px;
+  }
+  h1 {
+    margin: 6px 0 2px;
+    font-size: 1.7rem;
+    letter-spacing: 1px;
+  }
+  .subtitle {
+    margin: 0 0 14px;
+    font-size: 0.92rem;
+    color: #8a7d6c;
+  }
+  .stage {
+    position: relative;
+    width: 100%;
+    max-width: 960px;
+  }
+  @media (min-width: 900px) {
+    .stage {
+      max-width: min(960px, calc((100vh - 200px) * 1.77778));
+    }
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 960 / 540;
+    background: #f5efe1;
+    border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+  }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(30, 24, 18, 0.55);
+    border-radius: 14px;
+    color: #f5efe1;
+    text-align: center;
+    padding: 20px;
+    gap: 14px;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h2 { margin: 0; font-size: 1.4rem; }
+  .mode-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    font-family: inherit;
+    font-size: 0.95rem;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 2px solid #f5efe1;
+    background: transparent;
+    color: #f5efe1;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  button:hover { background: #f5efe1; color: #3b332a; }
+  button.primary {
+    background: #b5583f;
+    border-color: #b5583f;
+    color: #fff8ee;
+  }
+  button.primary:hover { background: #93432d; }
+  button.selected {
+    background: #7a6a9a;
+    border-color: #7a6a9a;
+    color: #fff8ee;
+  }
+  .scoreboard {
+    width: 100%;
+    max-width: 960px;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    font-size: 0.95rem;
+    color: #5a4f43;
+    flex-wrap: wrap;
+    text-align: center;
+  }
+  .scoreboard #scoreText {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #2b2420;
+  }
+  .hud {
+    width: 100%;
+    max-width: 960px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .controls {
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: #5a4f43;
+    background: #f5efe1;
+    border-radius: 10px;
+    padding: 8px 14px;
+  }
+  .controls b { color: #7a6a9a; }
+  .side-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .side-actions button {
+    border-color: #7a6a9a;
+    color: #7a6a9a;
+    background: #fff;
+  }
+  .side-actions button:hover { background: #7a6a9a; color: #fff; }
+  .touch-controls {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    display: none;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  @media (pointer: coarse) {
+    .touch-controls {
+      display: flex;
+    }
+  }
+  .touch-controls.hidden {
+    display: none;
+  }
+  .touch-controls button {
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    font-size: 1.3rem;
+    border-color: #7a6a9a;
+    background: rgba(245,239,225,0.85);
+    color: #5c4e79;
+    touch-action: none;
+    user-select: none;
+  }
+  .touch-controls button:active { background: #7a6a9a; color: #fff; }
+  @media (max-width: 600px) {
+    .overlay {
+      padding: 10px;
+      gap: 8px;
+    }
+    .overlay h2 { font-size: 1.1rem; }
+    .mode-buttons { gap: 6px; }
+    .overlay button {
+      font-size: 0.8rem;
+      padding: 7px 12px;
+    }
+    .overlay p { font-size: 0.72rem !important; }
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+  <h1>🥔 감자배구</h1>
+  <p class="subtitle">다시 만난 추억의 한판 승부</p>
+
+  <div class="stage">
+    <canvas id="court" width="960" height="540" role="img"
+      aria-label="감자배구 경기장. 왼쪽 보라 감자와 오른쪽 주황 감자가 네트를 사이에 두고 대결합니다."></canvas>
+
+    <div id="menuOverlay" class="overlay">
+      <h2>모드를 선택하세요</h2>
+      <div class="mode-buttons">
+        <button id="modeCpu" class="selected">컴퓨터와 대전</button>
+        <button id="modePvp">2인용 (같은 키보드)</button>
+      </div>
+      <p style="max-width:520px; font-size:0.85rem; opacity:0.9;">
+        왼쪽: A / D 이동, W 점프 &nbsp;·&nbsp; 오른쪽: ← / → 이동, ↑ 점프<br/>
+        아래 버튼 또는 Space로 시작 &nbsp;·&nbsp; 7점 선취 시 승리
+      </p>
+    </div>
+
+    <div id="pauseOverlay" class="overlay hidden">
+      <h2>일시정지</h2>
+      <p>아래 재개 버튼 또는 P 키를 눌러 계속하기</p>
+    </div>
+
+    <div id="touchControls" class="touch-controls">
+      <button id="touchLeft" aria-label="왼쪽 감자 왼쪽으로 이동">◀</button>
+      <button id="touchJump" aria-label="왼쪽 감자 점프">▲</button>
+      <button id="touchRight" aria-label="왼쪽 감자 오른쪽으로 이동">▶</button>
+    </div>
+  </div>
+
+  <div id="scoreboard" class="scoreboard" aria-live="polite">
+    <span id="scoreText">0 : 0</span>
+    <span id="statusText">모드를 선택하고 시작하세요</span>
+  </div>
+
+  <div class="hud">
+    <div class="controls">
+      <b>왼쪽 감자</b>: A/D 이동, W 점프 &nbsp;|&nbsp;
+      <b>오른쪽 감자</b>: ←/→ 이동, ↑ 점프 &nbsp;|&nbsp;
+      Space 서브·진행 &nbsp;|&nbsp; P 일시정지
+    </div>
+    <div class="side-actions">
+      <button id="actionBtn" class="primary">시작하기</button>
+      <button id="pauseBtn">일시정지</button>
+      <button id="modeMenuBtn">모드 변경</button>
+    </div>
+  </div>
+
+  <script>
+/*
+ * engine.js — 감자 발리볼 순수 물리 엔진
+ * 프레임워크/DOM 의존 없음. 브라우저 전역(window.VolleyEngine) 및
+ * CommonJS(module.exports) 양쪽에서 사용 가능.
+ * 좌표계: 가상 코트 960x540, y는 아래로 증가.
+ */
+(function (root) {
+  'use strict';
+
+  var WIDTH = 960;
+  var HEIGHT = 540;
+  var GROUND_Y = 480;
+  var WALL_LEFT = 20;
+  var WALL_RIGHT = 940;
+  var NET_X = WIDTH / 2;
+  var NET_HALF_WIDTH = 6;
+  var NET_HEIGHT = 130;
+
+  var PLAYER_RADIUS = 30;
+  var PLAYER_SPEED = 260; // px/s
+  var JUMP_SPEED = 620; // px/s (초기 점프 속도)
+  var GRAVITY_PLAYER = 1700;
+
+  var BALL_RADIUS = 16;
+  var GRAVITY_BALL = 900;
+  var MAX_BALL_SPEED = 820;
+  var CEILING_Y = 0;
+
+  var WIN_SCORE = 7;
+
+  function clamp(v, min, max) {
+    return v < min ? min : v > max ? max : v;
+  }
+
+  function makePlayer(side) {
+    var isLeft = side === 'left';
+    var x = isLeft ? WALL_LEFT + 140 : WALL_RIGHT - 140;
+    return {
+      side: side,
+      x: x,
+      height: 0, // 지면 위로 뜬 높이 (0 = 접지)
+      vy: 0,
+      onGround: true
+    };
+  }
+
+  function playerBounds(side) {
+    if (side === 'left') {
+      return {
+        min: WALL_LEFT + PLAYER_RADIUS,
+        max: NET_X - NET_HALF_WIDTH - PLAYER_RADIUS
+      };
+    }
+    return {
+      min: NET_X + NET_HALF_WIDTH + PLAYER_RADIUS,
+      max: WALL_RIGHT - PLAYER_RADIUS
+    };
+  }
+
+  function playerCenterY(player) {
+    return GROUND_Y - PLAYER_RADIUS - player.height;
+  }
+
+  function createInitialState() {
+    var state = {
+      players: [makePlayer('left'), makePlayer('right')],
+      ball: { x: NET_X / 2, y: GROUND_Y - 200, vx: 0, vy: 0 },
+      score: [0, 0],
+      server: 0, // 다음 서브를 넣을 플레이어 index
+      phase: 'ready', // 'ready' | 'play' | 'point' | 'gameover'
+      lastPoint: null, // {winner, reason}
+      winner: null
+    };
+    resetServe(state, state.server);
+    return state;
+  }
+
+  // 서브 준비 상태로 리셋: 공을 서버 위에 배치, 플레이어 위치 초기화
+  function resetServe(state, serverIndex) {
+    state.server = serverIndex;
+    state.phase = 'ready';
+    state.lastPoint = null;
+    state.players[0] = makePlayer('left');
+    state.players[1] = makePlayer('right');
+    var server = state.players[serverIndex];
+    state.ball.x = server.x;
+    state.ball.y = playerCenterY(server) - PLAYER_RADIUS - BALL_RADIUS - 10;
+    state.ball.vx = 0;
+    state.ball.vy = 0;
+    return state;
+  }
+
+  // ready 상태에서 스페이스바로 서브를 시작할 때 호출.
+  // vx=300, vy=-580은 분석적으로 검증됨: 시작 x=160(또는 800), y=394 기준
+  // x=NET_X(480) 통과 시각 t≈1.067s에서 y≈287.3 (네트 상단 350보다 훨씬 위,
+  // 공 반지름 16을 빼도 여유 45px+로 네트 상단 모서리에 걸리지 않고 확실히
+  // 넘긴다). 착지(y=464)는 t≈1.4s, x≈580(반대편 코트 내부, 네트와 상대
+  // 플레이어 사이)로 자동 실점 없이 상대가 받을 수 있는 위치에 떨어진다.
+  function launchServe(state) {
+    if (state.phase !== 'ready') return;
+    var dir = state.server === 0 ? 1 : -1;
+    state.ball.vx = dir * 300;
+    state.ball.vy = -580;
+    state.phase = 'play';
+  }
+
+  function resetMatch(state) {
+    state.score = [0, 0];
+    state.winner = null;
+    resetServe(state, 0);
+    state.phase = 'ready';
+  }
+
+  function updatePlayer(player, input, dt) {
+    var bounds = playerBounds(player.side);
+    var dir = 0;
+    if (input) {
+      if (input.left) dir -= 1;
+      if (input.right) dir += 1;
+    }
+    player.x += dir * PLAYER_SPEED * dt;
+    player.x = clamp(player.x, bounds.min, bounds.max);
+
+    if (input && input.jump && player.onGround) {
+      player.vy = -JUMP_SPEED;
+      player.onGround = false;
+    }
+
+    player.vy += GRAVITY_PLAYER * dt;
+    player.height -= player.vy * dt;
+    if (player.height <= 0) {
+      player.height = 0;
+      player.vy = 0;
+      player.onGround = true;
+    }
+  }
+
+  function reflectFromNormal(ball, nx, ny, restitution) {
+    var dot = ball.vx * nx + ball.vy * ny;
+    ball.vx -= (1 + restitution) * dot * nx;
+    ball.vy -= (1 + restitution) * dot * ny;
+  }
+
+  function clampBallSpeed(ball) {
+    var speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+    if (speed > MAX_BALL_SPEED) {
+      var scale = MAX_BALL_SPEED / speed;
+      ball.vx *= scale;
+      ball.vy *= scale;
+    }
+  }
+
+  function resolveBallVsCircle(ball, cx, cy, radius, extraVx) {
+    var dx = ball.x - cx;
+    var dy = ball.y - cy;
+    var distSq = dx * dx + dy * dy;
+    var minDist = radius + BALL_RADIUS;
+    if (distSq >= minDist * minDist) return false;
+    var dist = Math.sqrt(distSq);
+    var nx, ny;
+    if (dist === 0) {
+      // 중심이 정확히 겹치는 예외 상황: 법선을 정할 수 없으므로
+      // 위쪽을 기본 법선으로 사용해 밀어낸다.
+      nx = 0;
+      ny = -1;
+    } else {
+      nx = dx / dist;
+      ny = dy / dist;
+    }
+    // 겹침 해소는 접근/분리 여부와 무관하게 항상 수행 (끼임 방지)
+    var overlap = minDist - dist;
+    ball.x += nx * overlap;
+    ball.y += ny * overlap;
+
+    // 공이 법선 방향으로 접근 중일 때만 반사 처리. 이미 분리 중인 경우
+    // 반사를 적용하면 불필요한 추가 가속이 생기므로 침투 해소만 한다.
+    var approachDot = ball.vx * nx + ball.vy * ny;
+    if (approachDot < 0) {
+      reflectFromNormal(ball, nx, ny, 1);
+      // 캐릭터 몸통에 맞은 방향으로 약간의 추진력 부여
+      ball.vx += nx * 120 + (extraVx || 0) * 0.3;
+      ball.vy += ny * 120 - 60; // 위로 살짝 튀도록 보정
+      clampBallSpeed(ball);
+    }
+    return true;
+  }
+
+  function updateBall(state, dt) {
+    var ball = state.ball;
+    ball.vy += GRAVITY_BALL * dt;
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
+
+    // 천장
+    if (ball.y - BALL_RADIUS < CEILING_Y) {
+      ball.y = CEILING_Y + BALL_RADIUS;
+      ball.vy = Math.abs(ball.vy) * 0.85;
+    }
+
+    // 좌우 벽
+    if (ball.x - BALL_RADIUS < WALL_LEFT) {
+      ball.x = WALL_LEFT + BALL_RADIUS;
+      ball.vx = Math.abs(ball.vx) * 0.9;
+    } else if (ball.x + BALL_RADIUS > WALL_RIGHT) {
+      ball.x = WALL_RIGHT - BALL_RADIUS;
+      ball.vx = -Math.abs(ball.vx) * 0.9;
+    }
+
+    // 네트 (기둥 + 상단)
+    var netTop = GROUND_Y - NET_HEIGHT;
+    var withinNetX = ball.x + BALL_RADIUS > NET_X - NET_HALF_WIDTH &&
+      ball.x - BALL_RADIUS < NET_X + NET_HALF_WIDTH;
+    if (withinNetX && ball.y + BALL_RADIUS > netTop) {
+      // 네트 상단 위를 넘어가는 경우는 통과, 아니면 측면 충돌 처리
+      if (ball.y - BALL_RADIUS < netTop) {
+        // 네트 위쪽 모서리에 맞음 -> 위로 튕김
+        ball.y = netTop - BALL_RADIUS;
+        ball.vy = -Math.abs(ball.vy) * 0.6;
+      } else {
+        // 네트 측면
+        if (ball.x < NET_X) {
+          ball.x = NET_X - NET_HALF_WIDTH - BALL_RADIUS;
+          ball.vx = -Math.abs(ball.vx) * 0.7;
+        } else {
+          ball.x = NET_X + NET_HALF_WIDTH + BALL_RADIUS;
+          ball.vx = Math.abs(ball.vx) * 0.7;
+        }
+      }
+    }
+
+    // 플레이어 충돌
+    for (var i = 0; i < state.players.length; i++) {
+      var p = state.players[i];
+      var cy = playerCenterY(p);
+      resolveBallVsCircle(ball, p.x, cy, PLAYER_RADIUS, 0);
+    }
+
+    clampBallSpeed(ball);
+
+    // 바닥 충돌 -> 점수
+    if (ball.y + BALL_RADIUS >= GROUND_Y) {
+      ball.y = GROUND_Y - BALL_RADIUS;
+      var landedLeft = ball.x < NET_X;
+      var scorer = landedLeft ? 1 : 0;
+      awardPoint(state, scorer);
+    }
+  }
+
+  function awardPoint(state, scorerIndex) {
+    state.score[scorerIndex] += 1;
+    state.lastPoint = { winner: scorerIndex };
+    state.phase = 'point';
+    if (state.score[scorerIndex] >= WIN_SCORE) {
+      state.winner = scorerIndex;
+      state.phase = 'gameover';
+    }
+  }
+
+  // 득점 연출 후 앱에서 호출하여 다음 서브 준비
+  function continueAfterPoint(state) {
+    if (state.phase !== 'point' || state.lastPoint === null) return;
+    resetServe(state, state.lastPoint.winner);
+  }
+
+  function update(state, dt, inputs) {
+    if (state.phase === 'gameover') return state;
+    updatePlayer(state.players[0], inputs && inputs.p0, dt);
+    updatePlayer(state.players[1], inputs && inputs.p1, dt);
+
+    if (state.phase === 'ready') {
+      // 서브 대기 중에는 공이 서버를 따라다님
+      var server = state.players[state.server];
+      state.ball.x = server.x;
+      state.ball.y = playerCenterY(server) - PLAYER_RADIUS - BALL_RADIUS - 10;
+      state.ball.vx = 0;
+      state.ball.vy = 0;
+    } else if (state.phase === 'play') {
+      updateBall(state, dt);
+    }
+    return state;
+  }
+
+  var VolleyEngine = {
+    WIDTH: WIDTH,
+    HEIGHT: HEIGHT,
+    GROUND_Y: GROUND_Y,
+    WALL_LEFT: WALL_LEFT,
+    WALL_RIGHT: WALL_RIGHT,
+    NET_X: NET_X,
+    NET_HALF_WIDTH: NET_HALF_WIDTH,
+    NET_HEIGHT: NET_HEIGHT,
+    PLAYER_RADIUS: PLAYER_RADIUS,
+    BALL_RADIUS: BALL_RADIUS,
+    WIN_SCORE: WIN_SCORE,
+    createInitialState: createInitialState,
+    resetServe: resetServe,
+    resetMatch: resetMatch,
+    launchServe: launchServe,
+    continueAfterPoint: continueAfterPoint,
+    update: update,
+    playerCenterY: playerCenterY
+  };
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = VolleyEngine;
+  } else {
+    root.VolleyEngine = VolleyEngine;
+  }
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+  <script>
+/*
+ * app.js — 입력 처리, 렌더링, 화면 흐름 담당.
+ * 물리 계산은 전부 engine.js(VolleyEngine)에 위임한다.
+ */
+(function () {
+  'use strict';
+
+  var Engine = window.VolleyEngine;
+  var canvas = document.getElementById('court');
+  var ctx = canvas.getContext('2d');
+
+  var menuOverlay = document.getElementById('menuOverlay');
+  var pauseOverlay = document.getElementById('pauseOverlay');
+  var modeCpuBtn = document.getElementById('modeCpu');
+  var modePvpBtn = document.getElementById('modePvp');
+  var actionBtn = document.getElementById('actionBtn');
+  var pauseBtn = document.getElementById('pauseBtn');
+  var modeMenuBtn = document.getElementById('modeMenuBtn');
+  var scoreText = document.getElementById('scoreText');
+  var statusText = document.getElementById('statusText');
+  var touchControls = document.getElementById('touchControls');
+  var touchLeft = document.getElementById('touchLeft');
+  var touchJump = document.getElementById('touchJump');
+  var touchRight = document.getElementById('touchRight');
+
+  var COLOR_LEFT = '#7a6a9a';   // 무디 퍼플
+  var COLOR_LEFT_DARK = '#5c4e79';
+  var COLOR_RIGHT = '#b5583f';  // 러스트
+  var COLOR_RIGHT_DARK = '#8c4130';
+  var COURT_GREEN = '#3f6a4a';
+  var COURT_GREEN_LIGHT = '#4d7a58';
+  var BG_CREAM = '#f5efe1';
+
+  var ARROW_CODES = { ArrowLeft: 1, ArrowRight: 1, ArrowUp: 1, ArrowDown: 1 };
+
+  var mode = 'cpu'; // 'cpu' | 'pvp'
+  var gameStarted = false;
+  var paused = false;
+  var menuOpen = true; // 메뉴 오버레이(모드 선택)가 보이는 중인지
+
+  var keys = {};
+  var touch = { left: false, right: false, jump: false };
+
+  var state = Engine.createInitialState();
+
+  function isGameActive() {
+    return gameStarted && !paused && !menuOpen;
+  }
+
+  // ---- 모드 선택 ----
+  modeCpuBtn.addEventListener('click', function () {
+    mode = 'cpu';
+    modeCpuBtn.classList.add('selected');
+    modePvpBtn.classList.remove('selected');
+  });
+  modePvpBtn.addEventListener('click', function () {
+    mode = 'pvp';
+    modePvpBtn.classList.add('selected');
+    modeCpuBtn.classList.remove('selected');
+  });
+
+  // ---- 단일 컨텍스트 액션 버튼 (시작/서브/다음/다시하기/메뉴 복귀) ----
+  actionBtn.addEventListener('click', handleAction);
+  pauseBtn.addEventListener('click', togglePause);
+  modeMenuBtn.addEventListener('click', openModeMenu);
+
+  function openModeMenu() {
+    menuOpen = true;
+    if (gameStarted) paused = true;
+    menuOverlay.classList.remove('hidden');
+    pauseOverlay.classList.add('hidden');
+    refreshUI();
+  }
+
+  function startGame() {
+    gameStarted = true;
+    paused = false;
+    menuOpen = false;
+    menuOverlay.classList.add('hidden');
+    Engine.resetMatch(state);
+    refreshUI();
+  }
+
+  function handleAction() {
+    if (menuOpen) {
+      if (!gameStarted) {
+        startGame();
+      } else {
+        // 게임 도중 모드 변경 화면에서 복귀
+        menuOpen = false;
+        paused = false;
+        menuOverlay.classList.add('hidden');
+        refreshUI();
+      }
+      return;
+    }
+    if (paused) return;
+    if (state.phase === 'ready') {
+      Engine.launchServe(state);
+    } else if (state.phase === 'point') {
+      Engine.continueAfterPoint(state);
+    } else if (state.phase === 'gameover') {
+      Engine.resetMatch(state);
+    }
+    refreshUI();
+  }
+
+  function togglePause() {
+    if (!gameStarted || menuOpen || state.phase === 'gameover') return;
+    paused = !paused;
+    pauseOverlay.classList.toggle('hidden', !paused);
+    refreshUI();
+  }
+
+  // ---- 키보드 입력 ----
+  window.addEventListener('keydown', function (e) {
+    keys[e.code] = true;
+
+    if (ARROW_CODES[e.code] && isGameActive()) {
+      e.preventDefault();
+    }
+
+    if (e.code === 'Space') {
+      // 버튼에 포커스가 있으면 브라우저 기본 클릭 활성화에 맡기고
+      // 우리 쪽 핸들러는 실행하지 않는다 (중복 실행 방지).
+      var activeIsButton = document.activeElement && document.activeElement.tagName === 'BUTTON';
+      if (activeIsButton) return;
+      e.preventDefault();
+      if (e.repeat) return;
+      handleAction();
+    } else if (e.code === 'KeyP') {
+      if (e.repeat) return;
+      togglePause();
+    }
+  });
+  window.addEventListener('keyup', function (e) {
+    keys[e.code] = false;
+  });
+
+  // 탭 비활성화/포커스 이탈 시 입력을 지우고 자동 일시정지 (자동 재개는 하지 않음)
+  function handleInactive() {
+    keys = {};
+    touch.left = touch.right = touch.jump = false;
+    if (gameStarted && !paused && !menuOpen && state.phase !== 'gameover') {
+      paused = true;
+      pauseOverlay.classList.remove('hidden');
+      refreshUI();
+    }
+  }
+  window.addEventListener('blur', handleInactive);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) handleInactive();
+  });
+
+  // ---- 터치 컨트롤 (왼쪽 플레이어 전용) ----
+  function bindTouchButton(el, onDown, onUp) {
+    el.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      onDown();
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
+    });
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
+    el.addEventListener('pointerleave', onUp);
+  }
+  bindTouchButton(touchLeft, function () { touch.left = true; }, function () { touch.left = false; });
+  bindTouchButton(touchRight, function () { touch.right = true; }, function () { touch.right = false; });
+  bindTouchButton(touchJump, function () { touch.jump = true; }, function () { touch.jump = false; });
+
+  // ---- 입력 → 플레이어 인풋 매핑 ----
+  function getInputs() {
+    var p0 = {
+      left: !!keys['KeyA'] || touch.left,
+      right: !!keys['KeyD'] || touch.right,
+      jump: !!keys['KeyW'] || touch.jump
+    };
+    var p1;
+    if (mode === 'pvp') {
+      p1 = {
+        left: !!keys['ArrowLeft'],
+        right: !!keys['ArrowRight'],
+        jump: !!keys['ArrowUp']
+      };
+    } else {
+      p1 = computeAiInput();
+    }
+    return { p0: p0, p1: p1 };
+  }
+
+  // ---- 간단한 컴퓨터 상대 AI ----
+  // 서브/득점 후 재개는 여기서 자동으로 트리거하지 않는다. 누가 득점했든
+  // 사람이 Space 또는 컨텍스트 버튼을 눌러야 다음 랠리가 시작된다.
+  function computeAiInput() {
+    var input = { left: false, right: false, jump: false };
+    var ball = state.ball;
+    var me = state.players[1];
+
+    var targetX = ball.x;
+    // 공이 상대 코트에 있으면 중앙 근처에서 대기
+    if (ball.x < Engine.NET_X) {
+      targetX = Engine.NET_X + 160;
+    }
+    var diff = targetX - me.x;
+    if (Math.abs(diff) > 10) {
+      if (diff > 0) input.right = true;
+      else input.left = true;
+    }
+
+    var meCenterY = Engine.playerCenterY(me);
+    var closeEnough = Math.abs(ball.x - me.x) < 70;
+    var ballAbove = ball.y < meCenterY - 10;
+    var ballFalling = ball.vy > -50;
+    if (closeEnough && ballAbove && ballFalling && me.onGround) {
+      input.jump = true;
+    }
+    return input;
+  }
+
+  // ---- 고정 스텝(1/120초) 게임 루프 ----
+  var STEP = 1 / 120;
+  var MAX_SUBSTEPS = 15;
+  var acc = 0;
+  var lastTime = null;
+
+  function frame(time) {
+    requestAnimationFrame(frame);
+    if (lastTime === null) lastTime = time;
+    var dt = (time - lastTime) / 1000;
+    lastTime = time;
+    if (dt > 0.25) dt = 0.25; // 탭 비활성 후 복귀 시 폭주 방지
+    acc += dt;
+
+    if (isGameActive()) {
+      var steps = 0;
+      while (acc >= STEP && steps < MAX_SUBSTEPS) {
+        var inputs = getInputs();
+        Engine.update(state, STEP, inputs);
+        acc -= STEP;
+        steps++;
+      }
+      if (steps === MAX_SUBSTEPS) acc = 0;
+    } else {
+      acc = 0;
+    }
+
+    render();
+    refreshUI();
+  }
+
+  // ---- UI 텍스트/버튼 상태 갱신 (DOM, 캔버스 밖) ----
+  var lastScoreStr = null;
+  var lastStatusStr = null;
+
+  function sideLabel(idx) {
+    return idx === 0 ? '왼쪽' : '오른쪽';
+  }
+
+  function computeStatusStr() {
+    if (menuOpen) {
+      return gameStarted ? '일시정지됨 · 모드 변경 중' : '모드를 선택하고 시작하세요';
+    }
+    if (paused) return '일시정지 중';
+    if (state.phase === 'ready') {
+      return sideLabel(state.server) + ' 감자 서브 대기 · 서브하기 또는 Space';
+    }
+    if (state.phase === 'play') return '경기 진행 중';
+    if (state.phase === 'point') {
+      return sideLabel(state.lastPoint.winner) + ' 감자 득점! 다음 랠리 또는 Space';
+    }
+    if (state.phase === 'gameover') {
+      return sideLabel(state.winner) + ' 감자 승리! 다시하기 또는 Space';
+    }
+    return '';
+  }
+
+  function computeActionLabel() {
+    if (menuOpen) return gameStarted ? '게임으로 돌아가기' : '시작하기';
+    if (paused) return '일시정지 중';
+    if (state.phase === 'ready') return '서브하기';
+    if (state.phase === 'play') return '진행 중';
+    if (state.phase === 'point') return '다음 랠리';
+    if (state.phase === 'gameover') return '다시하기';
+    return '시작하기';
+  }
+
+  function refreshUI() {
+    // DOM 점수/상태는 매 프레임 다시 쓰지 않고 변경될 때만 갱신한다.
+    var scoreStr = state.score[0] + ' : ' + state.score[1];
+    if (scoreStr !== lastScoreStr) {
+      scoreText.textContent = scoreStr;
+      lastScoreStr = scoreStr;
+    }
+    var statusStr = computeStatusStr();
+    if (statusStr !== lastStatusStr) {
+      statusText.textContent = statusStr;
+      lastStatusStr = statusStr;
+    }
+
+    actionBtn.textContent = computeActionLabel();
+    actionBtn.disabled = !menuOpen && (paused || state.phase === 'play');
+
+    pauseBtn.textContent = paused ? '재개' : '일시정지';
+    pauseBtn.disabled = !gameStarted || menuOpen || state.phase === 'gameover';
+
+    // 메뉴/일시정지 오버레이가 떠 있을 때는 터치 컨트롤을 겹치지 않게 숨긴다.
+    touchControls.classList.toggle('hidden', menuOpen || paused);
+  }
+
+  // ---- 렌더링 ----
+  function render() {
+    ctx.clearRect(0, 0, Engine.WIDTH, Engine.HEIGHT);
+    drawBackground();
+    drawCourt();
+    drawNet();
+    drawPlayer(state.players[0], COLOR_LEFT, COLOR_LEFT_DARK);
+    drawPlayer(state.players[1], COLOR_RIGHT, COLOR_RIGHT_DARK);
+    drawBall(state.ball);
+    drawScore();
+    drawStatus();
+  }
+
+  function drawBackground() {
+    ctx.fillStyle = BG_CREAM;
+    ctx.fillRect(0, 0, Engine.WIDTH, Engine.HEIGHT);
+    // 은은한 배경 원 장식
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = COLOR_LEFT;
+    ctx.beginPath();
+    ctx.arc(120, 100, 90, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = COLOR_RIGHT;
+    ctx.beginPath();
+    ctx.arc(840, 90, 100, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawCourt() {
+    var groundH = Engine.HEIGHT - Engine.GROUND_Y;
+    var grad = ctx.createLinearGradient(0, Engine.GROUND_Y, 0, Engine.HEIGHT);
+    grad.addColorStop(0, COURT_GREEN_LIGHT);
+    grad.addColorStop(1, COURT_GREEN);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, Engine.GROUND_Y, Engine.WIDTH, groundH);
+
+    // 코트 라인
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(Engine.WALL_LEFT, Engine.GROUND_Y);
+    ctx.lineTo(Engine.WALL_RIGHT, Engine.GROUND_Y);
+    ctx.stroke();
+    ctx.strokeRect(Engine.WALL_LEFT, Engine.GROUND_Y, Engine.WALL_RIGHT - Engine.WALL_LEFT, groundH - 4);
+
+    // 중앙 표시
+    ctx.beginPath();
+    ctx.setLineDash([6, 6]);
+    ctx.moveTo(Engine.NET_X, Engine.GROUND_Y);
+    ctx.lineTo(Engine.NET_X, Engine.HEIGHT);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function drawNet() {
+    var topY = Engine.GROUND_Y - Engine.NET_HEIGHT;
+    // 기둥
+    ctx.fillStyle = '#6b5a45';
+    ctx.fillRect(Engine.NET_X - Engine.NET_HALF_WIDTH, topY, Engine.NET_HALF_WIDTH * 2, Engine.NET_HEIGHT);
+    // 네트 그물 패턴
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = 1;
+    for (var y = topY + 6; y < Engine.GROUND_Y; y += 10) {
+      ctx.beginPath();
+      ctx.moveTo(Engine.NET_X - Engine.NET_HALF_WIDTH, y);
+      ctx.lineTo(Engine.NET_X + Engine.NET_HALF_WIDTH, y);
+      ctx.stroke();
+    }
+    // 상단 테이프
+    ctx.fillStyle = '#fff8ee';
+    ctx.fillRect(Engine.NET_X - Engine.NET_HALF_WIDTH - 4, topY - 6, Engine.NET_HALF_WIDTH * 2 + 8, 8);
+  }
+
+  // 감자 캐릭터: 몸통(타원) + 눈 + 팔다리 스텁
+  function drawPlayer(player, color, darkColor) {
+    var cy = Engine.playerCenterY(player);
+    var r = Engine.PLAYER_RADIUS;
+    var squash = player.onGround ? 1 : 0.94;
+
+    ctx.save();
+    ctx.translate(player.x, cy);
+    ctx.scale(1, squash);
+
+    // 몸통
+    var grad = ctx.createRadialGradient(-r * 0.3, -r * 0.4, r * 0.2, 0, 0, r * 1.2);
+    grad.addColorStop(0, lighten(color));
+    grad.addColorStop(1, color);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 1.05, r, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 감자 반점(울퉁불퉁 텍스처)
+    ctx.fillStyle = darkColor;
+    ctx.globalAlpha = 0.35;
+    dot(-r * 0.4, -r * 0.2, 3.5);
+    dot(r * 0.35, 0.1 * r, 3);
+    dot(-r * 0.1, r * 0.45, 2.6);
+    dot(r * 0.2, -r * 0.5, 2.4);
+    ctx.globalAlpha = 1;
+
+    // 눈
+    var dir = player.side === 'left' ? 1 : -1;
+    ctx.fillStyle = '#2b2420';
+    ctx.beginPath();
+    ctx.ellipse(dir * r * 0.32, -r * 0.12, 4.2, 5.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(dir * r * 0.62, -r * 0.05, 3.6, 4.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // 다리(짧은 스텁), 스쿼시 영향 안 받도록 별도로 그림
+    ctx.fillStyle = darkColor;
+    var legY = cy + r * 0.85;
+    ctx.beginPath();
+    ctx.ellipse(player.x - r * 0.4, legY, 8, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(player.x + r * 0.4, legY, 8, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    function dot(x, y, rr) {
+      ctx.beginPath();
+      ctx.arc(x, y, rr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function lighten(hex) {
+    var c = hexToRgb(hex);
+    return 'rgb(' + Math.min(255, c.r + 60) + ',' + Math.min(255, c.g + 60) + ',' + Math.min(255, c.b + 60) + ')';
+  }
+  function hexToRgb(hex) {
+    hex = hex.replace('#', '');
+    return {
+      r: parseInt(hex.substring(0, 2), 16),
+      g: parseInt(hex.substring(2, 4), 16),
+      b: parseInt(hex.substring(4, 6), 16)
+    };
+  }
+
+  function drawBall(ball) {
+    var r = Engine.BALL_RADIUS;
+
+    // 바닥 그림자 (공보다 먼저 그려 공 아래 깔리도록)
+    ctx.save();
+    ctx.globalAlpha = shadowAlpha(ball.y);
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(ball.x, Engine.GROUND_Y + 4, r * 0.8, r * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(ball.x, ball.y);
+    // 공 자체에 은은한 입체 그림자
+    ctx.shadowColor = 'rgba(60,45,20,0.35)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 3;
+    var grad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.15, 0, 0, r);
+    grad.addColorStop(0, '#fffaf0');
+    grad.addColorStop(1, '#c9b48a'); // 대비를 조금 더 강하게
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.strokeStyle = 'rgba(90,70,40,0.65)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0.3, Math.PI - 0.3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, r, Math.PI + 0.3, Math.PI * 2 - 0.3);
+    ctx.stroke();
+    ctx.restore();
+
+    function shadowAlpha(y) {
+      var t = 1 - (Engine.GROUND_Y - y) / 300;
+      return Math.max(0.05, Math.min(0.25, t * 0.25));
+    }
+  }
+
+  function drawScore() {
+    ctx.fillStyle = '#2b2420';
+    ctx.font = 'bold 34px "Apple SD Gothic Neo", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(state.score[0], Engine.WIDTH * 0.28, 54);
+    ctx.fillText(state.score[1], Engine.WIDTH * 0.72, 54);
+
+    ctx.font = '600 15px "Apple SD Gothic Neo", sans-serif';
+    ctx.fillStyle = COLOR_LEFT_DARK;
+    ctx.fillText('왼쪽 감자', Engine.WIDTH * 0.28, 76);
+    ctx.fillStyle = COLOR_RIGHT_DARK;
+    ctx.fillText('오른쪽 감자', Engine.WIDTH * 0.72, 76);
+
+    ctx.fillStyle = '#8a7d6c';
+    ctx.font = '20px sans-serif';
+    ctx.fillText('–', Engine.WIDTH / 2, 54);
+  }
+
+  function drawStatus() {
+    if (menuOpen) return;
+    var msg = '';
+    if (paused) {
+      msg = '일시정지 중 — 재개 버튼 또는 P';
+    } else if (state.phase === 'ready') {
+      msg = (state.server === 0 ? '왼쪽 감자' : '오른쪽 감자') + ' 서브 — 서브하기 버튼 또는 Space';
+    } else if (state.phase === 'point') {
+      msg = (state.lastPoint.winner === 0 ? '왼쪽' : '오른쪽') + ' 감자 득점! 다음 랠리 버튼 또는 Space';
+    } else if (state.phase === 'gameover') {
+      msg = (state.winner === 0 ? '왼쪽' : '오른쪽') + ' 감자 승리! 🎉  다시하기 버튼 또는 Space';
+    }
+    if (!msg) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(43,36,32,0.78)';
+    ctx.font = '600 18px "Apple SD Gothic Neo", sans-serif';
+    var w = ctx.measureText(msg).width;
+    ctx.fillRect(Engine.WIDTH / 2 - w / 2 - 16, Engine.HEIGHT - 64, w + 32, 34);
+    ctx.fillStyle = '#fff8ee';
+    ctx.textAlign = 'center';
+    ctx.fillText(msg, Engine.WIDTH / 2, Engine.HEIGHT - 41);
+    ctx.restore();
+  }
+
+  refreshUI();
+  requestAnimationFrame(frame);
+})();
+
+</script>
+</body>
+</html>

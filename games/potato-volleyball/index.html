@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>감자배구</title>
+<style>
+  :root {
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #ece4d3;
+    font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #3b332a;
+    padding: 20px 12px 40px;
+  }
+  h1 {
+    margin: 6px 0 2px;
+    font-size: 1.7rem;
+    letter-spacing: 1px;
+  }
+  .subtitle {
+    margin: 0 0 14px;
+    font-size: 0.92rem;
+    color: #8a7d6c;
+  }
+  .stage {
+    position: relative;
+    width: 100%;
+    max-width: 960px;
+  }
+  @media (min-width: 900px) {
+    .stage {
+      max-width: min(960px, calc((100vh - 200px) * 1.77778));
+    }
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 960 / 540;
+    background: #f5efe1;
+    border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+  }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(30, 24, 18, 0.55);
+    border-radius: 14px;
+    color: #f5efe1;
+    text-align: center;
+    padding: 20px;
+    gap: 14px;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h2 { margin: 0; font-size: 1.4rem; }
+  .mode-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    font-family: inherit;
+    font-size: 0.95rem;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 2px solid #f5efe1;
+    background: transparent;
+    color: #f5efe1;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  button:hover { background: #f5efe1; color: #3b332a; }
+  button.primary {
+    background: #b5583f;
+    border-color: #b5583f;
+    color: #fff8ee;
+  }
+  button.primary:hover { background: #93432d; }
+  button.selected {
+    background: #7a6a9a;
+    border-color: #7a6a9a;
+    color: #fff8ee;
+  }
+  .scoreboard {
+    width: 100%;
+    max-width: 960px;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    font-size: 0.95rem;
+    color: #5a4f43;
+    flex-wrap: wrap;
+    text-align: center;
+  }
+  .scoreboard #scoreText {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #2b2420;
+  }
+  .hud {
+    width: 100%;
+    max-width: 960px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .controls {
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: #5a4f43;
+    background: #f5efe1;
+    border-radius: 10px;
+    padding: 8px 14px;
+  }
+  .controls b { color: #7a6a9a; }
+  .side-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .side-actions button {
+    border-color: #7a6a9a;
+    color: #7a6a9a;
+    background: #fff;
+  }
+  .side-actions button:hover { background: #7a6a9a; color: #fff; }
+  .touch-controls {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    display: none;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  @media (pointer: coarse) {
+    .touch-controls {
+      display: flex;
+    }
+  }
+  .touch-controls.hidden {
+    display: none;
+  }
+  .touch-controls button {
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    font-size: 1.3rem;
+    border-color: #7a6a9a;
+    background: rgba(245,239,225,0.85);
+    color: #5c4e79;
+    touch-action: none;
+    user-select: none;
+  }
+  .touch-controls button:active { background: #7a6a9a; color: #fff; }
+  @media (max-width: 600px) {
+    .overlay {
+      padding: 10px;
+      gap: 8px;
+    }
+    .overlay h2 { font-size: 1.1rem; }
+    .mode-buttons { gap: 6px; }
+    .overlay button {
+      font-size: 0.8rem;
+      padding: 7px 12px;
+    }
+    .overlay p { font-size: 0.72rem !important; }
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+  <h1>🥔 감자배구</h1>
+  <p class="subtitle">다시 만난 추억의 한판 승부</p>
+
+  <div class="stage">
+    <canvas id="court" width="960" height="540" role="img"
+      aria-label="감자배구 경기장. 왼쪽 보라 감자와 오른쪽 주황 감자가 네트를 사이에 두고 대결합니다."></canvas>
+
+    <div id="menuOverlay" class="overlay">
+      <h2>모드를 선택하세요</h2>
+      <div class="mode-buttons">
+        <button id="modeCpu" class="selected">컴퓨터와 대전</button>
+        <button id="modePvp">2인용 (같은 키보드)</button>
+      </div>
+      <p style="max-width:520px; font-size:0.85rem; opacity:0.9;">
+        왼쪽: A / D 이동, W 점프 &nbsp;·&nbsp; 오른쪽: ← / → 이동, ↑ 점프<br/>
+        아래 버튼 또는 Space로 시작 &nbsp;·&nbsp; 7점 선취 시 승리
+      </p>
+    </div>
+
+    <div id="pauseOverlay" class="overlay hidden">
+      <h2>일시정지</h2>
+      <p>아래 재개 버튼 또는 P 키를 눌러 계속하기</p>
+    </div>
+
+    <div id="touchControls" class="touch-controls">
+      <button id="touchLeft" aria-label="왼쪽 감자 왼쪽으로 이동">◀</button>
+      <button id="touchJump" aria-label="왼쪽 감자 점프">▲</button>
+      <button id="touchRight" aria-label="왼쪽 감자 오른쪽으로 이동">▶</button>
+    </div>
+  </div>
+
+  <div id="scoreboard" class="scoreboard" aria-live="polite">
+    <span id="scoreText">0 : 0</span>
+    <span id="statusText">모드를 선택하고 시작하세요</span>
+  </div>
+
+  <div class="hud">
+    <div class="controls">
+      <b>왼쪽 감자</b>: A/D 이동, W 점프 &nbsp;|&nbsp;
+      <b>오른쪽 감자</b>: ←/→ 이동, ↑ 점프 &nbsp;|&nbsp;
+      Space 서브·진행 &nbsp;|&nbsp; P 일시정지
+    </div>
+    <div class="side-actions">
+      <button id="actionBtn" class="primary">시작하기</button>
+      <button id="pauseBtn">일시정지</button>
+      <button id="modeMenuBtn">모드 변경</button>
+    </div>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
