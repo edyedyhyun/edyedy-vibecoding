@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>블록 한 줄</title>
+<style>
+  :root {
+    --cream: #F4EDE0;
+    --cream-deep: #E7DEC9;
+    --teal: #1F4E4A;
+    --teal-soft: #3E8E8A;
+    --coral: #D9764C;
+    --coral-deep: #B85536;
+    --ink: #2B2620;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--cream-deep);
+    color: var(--ink);
+    font-family: -apple-system, "Noto Sans KR", "Apple SD Gothic Neo", Pretendard, sans-serif;
+  }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 16px;
+  }
+  .app {
+    width: 100%;
+    max-width: 900px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    letter-spacing: 0.06em;
+    color: var(--teal);
+  }
+  header p {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    color: #5A5346;
+  }
+  .layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .board-wrap {
+    background: var(--cream);
+    border: 3px solid var(--ink);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 6px 0 rgba(43,38,32,0.15);
+    flex: 0 0 auto;
+  }
+  #board {
+    display: block;
+    width: min(280px, 78vw);
+    height: calc(min(280px, 78vw) * 2);
+    image-rendering: pixelated;
+    background: var(--cream);
+    border-radius: 4px;
+  }
+  .panel {
+    background: var(--cream);
+    border: 3px solid var(--ink);
+    border-radius: 8px;
+    padding: 14px;
+    width: 260px;
+    max-width: 88vw;
+    box-shadow: 0 6px 0 rgba(43,38,32,0.15);
+    flex: 0 0 auto;
+  }
+  .panel section { margin-bottom: 16px; }
+  .panel h2 {
+    margin: 0 0 6px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--teal);
+  }
+  .next-row {
+    display: flex;
+    gap: 8px;
+  }
+  .next-row canvas {
+    width: 48px;
+    height: 48px;
+    background: var(--cream-deep);
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+  }
+  #nextNames { font-size: 0.75rem; color: #5A5346; margin-top: 4px; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 0.95rem; }
+  .stat-row strong { color: var(--coral-deep); }
+  #status {
+    font-weight: bold;
+    color: var(--teal);
+  }
+  .btn-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  button {
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 10px 6px;
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    background: var(--teal);
+    color: var(--cream);
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+  }
+  button.coral { background: var(--coral); }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .main-actions { display: flex; gap: 8px; margin-bottom: 14px; }
+  .main-actions button { flex: 1; }
+  .help {
+    font-size: 0.7rem;
+    color: #5A5346;
+    line-height: 1.5;
+  }
+  @media (max-width: 640px) {
+    .layout { flex-direction: column; align-items: center; }
+    .panel { width: 100%; max-width: 320px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>블록 한 줄</h1>
+    <p>줄을 채워 지우는 오프라인 낙하 블록 퍼즐</p>
+  </header>
+  <div class="layout">
+    <div class="board-wrap">
+      <canvas id="board" width="280" height="560" role="img" aria-label="게임 보드"></canvas>
+    </div>
+    <div class="panel">
+      <section>
+        <h2>다음 블록</h2>
+        <div class="next-row">
+          <canvas id="next0" width="68" height="68"></canvas>
+          <canvas id="next1" width="68" height="68"></canvas>
+          <canvas id="next2" width="68" height="68"></canvas>
+        </div>
+        <div id="nextNames" aria-live="off"></div>
+      </section>
+      <section>
+        <h2>상태</h2>
+        <div class="stat-row"><span>점수</span><strong id="score" aria-live="polite">0</strong></div>
+        <div class="stat-row"><span>줄</span><strong id="lines" aria-live="polite">0</strong></div>
+        <div class="stat-row"><span>상황</span><span id="status" aria-live="polite">대기 중 — 시작을 눌러주세요</span></div>
+      </section>
+      <section class="main-actions">
+        <button id="btnStart" class="coral" type="button">시작</button>
+        <button id="btnPause" type="button">일시정지</button>
+        <button id="btnReset" type="button">다시하기</button>
+      </section>
+      <section>
+        <h2>조작</h2>
+        <div class="btn-grid">
+          <button data-action="left" type="button" aria-label="왼쪽 이동">←</button>
+          <button data-action="rotate" type="button" aria-label="회전">회전</button>
+          <button data-action="right" type="button" aria-label="오른쪽 이동">→</button>
+          <button data-action="softDrop" type="button" aria-label="소프트 드롭">↓</button>
+          <button data-action="hardDrop" type="button" aria-label="하드 드롭">낙하</button>
+          <button data-action="reset" type="button" aria-label="리셋">R</button>
+        </div>
+        <p class="help">키보드: ←/→ 이동, ↓ 소프트드롭, ↑/X 회전, Space 하드드롭, P 일시정지, R 리셋</p>
+      </section>
+    </div>
+  </div>
+</div>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

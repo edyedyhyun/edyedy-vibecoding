@@ -1,0 +1,15 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const E=require('./engine');
+const fresh=()=>{const s=E.createState(42);E.start(s);return s;};
+test('explicit start and deterministic seed',()=>{let a=E.createState(42),b=E.createState(42);assert.equal(a.status,'idle');assert.deepEqual(a,b);E.step(a,1);assert.equal(a.current,null);});
+test('seven bag and three previews across bags',()=>{let s=fresh(),types=[];for(let i=0;i<21;i++){types.push(s.current.type);assert.equal(s.next.length,3);s.board.forEach(r=>r.fill(0));E.hardDrop(s);}for(let i=0;i<21;i+=7)assert.equal(new Set(types.slice(i,i+7)).size,7);});
+test('all pieces stay within walls after moves and rotations',()=>{for(const type of E.PIECE_TYPES){const s=fresh();s.current={type,rot:0,x:3,y:5};for(const dir of ['left','right'])for(let n=0;n<25;n++){E.move(s,dir);E.rotate(s);for(const c of E.shapeCells(type,s.current.rot)){assert.ok(s.current.x+c.x>=0&&s.current.x+c.x<10);}}}});
+test('ghost is exact hard drop destination',()=>{const s=fresh();s.current={type:'T',rot:0,x:3,y:0};s.board[19][4]=1;const y=E.landingY(s);E.hardDrop(s);for(const c of E.shapeCells('T',0))assert.equal(s.board[y+c.y][3+c.x],3);});
+for(const n of [1,2,3,4])test(n+' completed rows clear with correct score',()=>{const s=fresh();for(let y=20-n;y<20;y++){s.board[y].fill(2);s.board[y][5]=0;}s.current={type:'I',rot:1,x:3,y:0};E.hardDrop(s);assert.equal(s.lines,n);assert.equal(s.score,E.SCORE_TABLE[n]);assert.equal(s.board.length,20);assert.ok(s.board.every(r=>r.some(v=>!v)));});
+test('spawn blocked ends game',()=>{const s=fresh();s.board[0].fill(1);s.board[0][0]=0;s.current={type:'O',rot:0,x:0,y:16};E.hardDrop(s);assert.equal(s.status,'gameover');const before=JSON.stringify(s);E.move(s,'right');E.rotate(s);E.hardDrop(s);E.step(s,1);assert.equal(JSON.stringify(s),before);});
+test('lock above top ends game',()=>{const s=fresh();s.board[0].fill(1);s.current={type:'O',rot:0,x:3,y:-2};E.hardDrop(s);assert.equal(s.status,'gameover');});
+test('paused inputs and time do not mutate game',()=>{const s=fresh();E.softDrop(s,true);E.pause(s);const before=JSON.stringify(s);E.move(s,'left');E.rotate(s);E.hardDrop(s);E.softDrop(s,true);E.step(s,2);assert.equal(JSON.stringify(s),before);E.resume(s);assert.equal(s.status,'running');assert.equal(s.softDrop,false);});
+test('gravity and soft drop',()=>{const a=fresh(),b=fresh();E.softDrop(b,true);E.step(a,.1);E.step(b,.1);assert.ok(b.current.y>a.current.y);});
+test('grounded lock delay and reset budget',()=>{const s=fresh();s.current={type:'O',rot:0,x:3,y:18};E.step(s,.1);assert.equal(s.board[19][4],0);for(let i=0;i<15;i++)E.move(s,i%2?'right':'left');assert.equal(s.lockResets,15);E.step(s,.1);assert.equal(s.board.flat().filter(Boolean).length,0);E.move(s,'right');E.step(s,.26);assert.equal(s.board.flat().filter(Boolean).length,4);});
+test('reset restores idle and clears board scores',()=>{const s=fresh();E.hardDrop(s);E.reset(s,42);assert.deepEqual(s,E.createState(42));});

@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>블록 한 줄</title>
+<style>
+  :root {
+    --cream: #F4EDE0;
+    --cream-deep: #E7DEC9;
+    --teal: #1F4E4A;
+    --teal-soft: #3E8E8A;
+    --coral: #D9764C;
+    --coral-deep: #B85536;
+    --ink: #2B2620;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--cream-deep);
+    color: var(--ink);
+    font-family: -apple-system, "Noto Sans KR", "Apple SD Gothic Neo", Pretendard, sans-serif;
+  }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 16px;
+  }
+  .app {
+    width: 100%;
+    max-width: 900px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    letter-spacing: 0.06em;
+    color: var(--teal);
+  }
+  header p {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    color: #5A5346;
+  }
+  .layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .board-wrap {
+    background: var(--cream);
+    border: 3px solid var(--ink);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 6px 0 rgba(43,38,32,0.15);
+    flex: 0 0 auto;
+  }
+  #board {
+    display: block;
+    width: min(280px, 78vw);
+    height: calc(min(280px, 78vw) * 2);
+    image-rendering: pixelated;
+    background: var(--cream);
+    border-radius: 4px;
+  }
+  .panel {
+    background: var(--cream);
+    border: 3px solid var(--ink);
+    border-radius: 8px;
+    padding: 14px;
+    width: 260px;
+    max-width: 88vw;
+    box-shadow: 0 6px 0 rgba(43,38,32,0.15);
+    flex: 0 0 auto;
+  }
+  .panel section { margin-bottom: 16px; }
+  .panel h2 {
+    margin: 0 0 6px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--teal);
+  }
+  .next-row {
+    display: flex;
+    gap: 8px;
+  }
+  .next-row canvas {
+    width: 48px;
+    height: 48px;
+    background: var(--cream-deep);
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+  }
+  #nextNames { font-size: 0.75rem; color: #5A5346; margin-top: 4px; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 0.95rem; }
+  .stat-row strong { color: var(--coral-deep); }
+  #status {
+    font-weight: bold;
+    color: var(--teal);
+  }
+  .btn-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  button {
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 10px 6px;
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    background: var(--teal);
+    color: var(--cream);
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+  }
+  button.coral { background: var(--coral); }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .main-actions { display: flex; gap: 8px; margin-bottom: 14px; }
+  .main-actions button { flex: 1; }
+  .help {
+    font-size: 0.7rem;
+    color: #5A5346;
+    line-height: 1.5;
+  }
+  @media (max-width: 640px) {
+    .layout { flex-direction: column; align-items: center; }
+    .panel { width: 100%; max-width: 320px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>블록 한 줄</h1>
+    <p>줄을 채워 지우는 오프라인 낙하 블록 퍼즐</p>
+  </header>
+  <div class="layout">
+    <div class="board-wrap">
+      <canvas id="board" width="280" height="560" role="img" aria-label="게임 보드"></canvas>
+    </div>
+    <div class="panel">
+      <section>
+        <h2>다음 블록</h2>
+        <div class="next-row">
+          <canvas id="next0" width="68" height="68"></canvas>
+          <canvas id="next1" width="68" height="68"></canvas>
+          <canvas id="next2" width="68" height="68"></canvas>
+        </div>
+        <div id="nextNames" aria-live="off"></div>
+      </section>
+      <section>
+        <h2>상태</h2>
+        <div class="stat-row"><span>점수</span><strong id="score" aria-live="polite">0</strong></div>
+        <div class="stat-row"><span>줄</span><strong id="lines" aria-live="polite">0</strong></div>
+        <div class="stat-row"><span>상황</span><span id="status" aria-live="polite">대기 중 — 시작을 눌러주세요</span></div>
+      </section>
+      <section class="main-actions">
+        <button id="btnStart" class="coral" type="button">시작</button>
+        <button id="btnPause" type="button">일시정지</button>
+        <button id="btnReset" type="button">다시하기</button>
+      </section>
+      <section>
+        <h2>조작</h2>
+        <div class="btn-grid">
+          <button data-action="left" type="button" aria-label="왼쪽 이동">←</button>
+          <button data-action="rotate" type="button" aria-label="회전">회전</button>
+          <button data-action="right" type="button" aria-label="오른쪽 이동">→</button>
+          <button data-action="softDrop" type="button" aria-label="소프트 드롭">↓</button>
+          <button data-action="hardDrop" type="button" aria-label="하드 드롭">낙하</button>
+          <button data-action="reset" type="button" aria-label="리셋">R</button>
+        </div>
+        <p class="help">키보드: ←/→ 이동, ↓ 소프트드롭, ↑/X 회전, Space 하드드롭, P 일시정지, R 리셋</p>
+      </section>
+    </div>
+  </div>
+</div>
+<script>
+/**
+ * engine.js — pure game logic for "블록 한 줄" (falling-block puzzle).
+ * No DOM access. Works as CommonJS module and as window.BlockEngine.
+ *
+ * State shape (see README.md "State shape" section for full docs):
+ * {
+ *   board: number[BOARD_H][BOARD_W]   // 0 = empty, otherwise piece id (1..7)
+ *   current: { type, rot, x, y }      // active piece, x/y = grid position of 4x4 box origin
+ *   bagQueue: string[]                // upcoming piece types (kept >= 3 for preview)
+ *   next: string[3]                   // next three piece types (preview)
+ *   rngState: number                  // internal seeded RNG state
+ *   score: number
+ *   lines: number
+ *   status: 'idle' | 'running' | 'paused' | 'gameover'
+ *   gravityAcc: number                // ms accumulated toward next gravity tick
+ *   lockAcc: number | null            // ms accumulated while piece is grounded, null if not grounded
+ *   lockResets: number                // count of lock-delay resets used for current piece
+ *   softDrop: boolean                 // whether soft-drop is currently held
+ * }
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.BlockEngine = factory();
+  }
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var BOARD_W = 10;
+  var BOARD_H = 20;
+  var GRAVITY_MS = 700;
+  var LOCK_DELAY_MS = 350;
+  var LOCK_MAX_RESETS = 15;
+  var DAS_MS = 150;
+  var REPEAT_MS = 45;
+  var SCORE_TABLE = { 1: 100, 2: 300, 3: 500, 4: 800 };
+
+  var PIECE_TYPES = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+
+  var PIECE_IDS = { I: 1, O: 2, T: 3, S: 4, Z: 5, J: 6, L: 7 };
+
+  // Each piece: 4 rotation states, each a 4x4 grid of 0/1 (row-major).
+  var SHAPES = {
+    I: [
+      ['....', 'XXXX', '....', '....'],
+      ['..X.', '..X.', '..X.', '..X.'],
+      ['....', 'XXXX', '....', '....'],
+      ['..X.', '..X.', '..X.', '..X.']
+    ],
+    O: [
+      ['.XX.', '.XX.', '....', '....'],
+      ['.XX.', '.XX.', '....', '....'],
+      ['.XX.', '.XX.', '....', '....'],
+      ['.XX.', '.XX.', '....', '....']
+    ],
+    T: [
+      ['.X..', 'XXX.', '....', '....'],
+      ['.X..', '.XX.', '.X..', '....'],
+      ['....', 'XXX.', '.X..', '....'],
+      ['.X..', 'XX..', '.X..', '....']
+    ],
+    S: [
+      ['.XX.', 'XX..', '....', '....'],
+      ['.X..', '.XX.', '..X.', '....'],
+      ['.XX.', 'XX..', '....', '....'],
+      ['.X..', '.XX.', '..X.', '....']
+    ],
+    Z: [
+      ['XX..', '.XX.', '....', '....'],
+      ['..X.', '.XX.', '.X..', '....'],
+      ['XX..', '.XX.', '....', '....'],
+      ['..X.', '.XX.', '.X..', '....']
+    ],
+    J: [
+      ['X...', 'XXX.', '....', '....'],
+      ['.XX.', '.X..', '.X..', '....'],
+      ['....', 'XXX.', '..X.', '....'],
+      ['.X..', '.X..', 'XX..', '....']
+    ],
+    L: [
+      ['..X.', 'XXX.', '....', '....'],
+      ['.X..', '.X..', '.XX.', '....'],
+      ['....', 'XXX.', 'X...', '....'],
+      ['XX..', '.X..', '.X..', '....']
+    ]
+  };
+
+  // Modest wall-kick offsets tried after a rotation, in order. This is a
+  // simplified kick table (not the full SRS kick tables per rotation pair) —
+  // it simply nudges the piece left/right/up by a small amount until a
+  // non-colliding placement is found.
+  var KICK_OFFSETS = [
+    { x: 0, y: 0 },
+    { x: -1, y: 0 },
+    { x: 1, y: 0 },
+    { x: -2, y: 0 },
+    { x: 2, y: 0 },
+    { x: 0, y: -1 }
+  ];
+
+  function shapeCells(type, rot) {
+    var grid = SHAPES[type][rot % 4];
+    var cells = [];
+    for (var r = 0; r < 4; r++) {
+      for (var c = 0; c < 4; c++) {
+        if (grid[r][c] === 'X') cells.push({ x: c, y: r });
+      }
+    }
+    return cells;
+  }
+
+  // Deterministic seeded RNG (mulberry32). Returns a function state-updater
+  // stored as a plain number so it can live inside serializable state.
+  function nextRandom(state) {
+    var t = (state.rngState += 0x6D2B79F5) | 0;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t = (t + Math.imul(t ^ (t >>> 7), t | 61)) ^ t;
+    var value = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return value;
+  }
+
+  function makeBag(state) {
+    var bag = PIECE_TYPES.slice();
+    for (var i = bag.length - 1; i > 0; i--) {
+      var j = Math.floor(nextRandom(state) * (i + 1));
+      var tmp = bag[i];
+      bag[i] = bag[j];
+      bag[j] = tmp;
+    }
+    return bag;
+  }
+
+  function refillQueue(state) {
+    while (state.bagQueue.length < 3) {
+      state.bagQueue = state.bagQueue.concat(makeBag(state));
+    }
+  }
+
+  function emptyBoard() {
+    var board = [];
+    for (var r = 0; r < BOARD_H; r++) {
+      board.push(new Array(BOARD_W).fill(0));
+    }
+    return board;
+  }
+
+  function createState(seed) {
+    var state = {
+      board: emptyBoard(),
+      current: null,
+      bagQueue: [],
+      next: [],
+      rngState: (seed >>> 0) || 1,
+      score: 0,
+      lines: 0,
+      status: 'idle',
+      gravityAcc: 0,
+      lockAcc: null,
+      lockResets: 0,
+      softDrop: false
+    };
+    refillQueue(state);
+    state.next = state.bagQueue.slice(0, 3);
+    return state;
+  }
+
+  function collides(state, type, rot, x, y) {
+    var cells = shapeCells(type, rot);
+    for (var i = 0; i < cells.length; i++) {
+      var bx = x + cells[i].x;
+      var by = y + cells[i].y;
+      if (bx < 0 || bx >= BOARD_W || by >= BOARD_H) return true;
+      if (by < 0) continue; // above the visible board, allowed
+      if (state.board[by][bx] !== 0) return true;
+    }
+    return false;
+  }
+
+  function spawnPiece(state) {
+    refillQueue(state);
+    var type = state.bagQueue.shift();
+    refillQueue(state); // shifting can drop the queue below 3, top it up again
+    state.next = state.bagQueue.slice(0, 3);
+    var rot = 0;
+    var x = Math.floor((BOARD_W - 4) / 2);
+    var y = 0; // spawn fully on the visible board so top-out collisions are real
+    state.current = { type: type, rot: rot, x: x, y: y };
+    state.gravityAcc = 0;
+    state.lockAcc = null;
+    state.lockResets = 0;
+    state.softDrop = false;
+    if (collides(state, type, rot, x, y)) {
+      state.status = 'gameover';
+    }
+  }
+
+  function start(state) {
+    if (state.status === 'gameover') return state;
+    state.status = 'running';
+    if (!state.current) spawnPiece(state);
+    return state;
+  }
+
+  function pause(state) {
+    if (state.status === 'running') {
+      state.status = 'paused';
+      state.softDrop = false;
+    }
+    return state;
+  }
+
+  function resume(state) {
+    if (state.status === 'paused') {
+      state.status = 'running';
+    }
+    return state;
+  }
+
+  function reset(state, seed) {
+    var fresh = createState(seed);
+    for (var key in fresh) {
+      if (Object.prototype.hasOwnProperty.call(fresh, key)) state[key] = fresh[key];
+    }
+    return state;
+  }
+
+  function isGrounded(state) {
+    var c = state.current;
+    return collides(state, c.type, c.rot, c.x, c.y + 1);
+  }
+
+  function lockPiece(state) {
+    var c = state.current;
+    var cells = shapeCells(c.type, c.rot);
+    var id = PIECE_IDS[c.type];
+    var overflowed = false;
+    for (var i = 0; i < cells.length; i++) {
+      var bx = c.x + cells[i].x;
+      var by = c.y + cells[i].y;
+      if (by < 0) {
+        overflowed = true; // locked above the visible board: stack topped out
+        continue;
+      }
+      if (by < BOARD_H && bx >= 0 && bx < BOARD_W) {
+        state.board[by][bx] = id;
+      }
+    }
+    clearLines(state);
+    state.current = null;
+    if (overflowed) {
+      state.status = 'gameover';
+      return;
+    }
+    if (state.status !== 'gameover') spawnPiece(state);
+  }
+
+  function clearLines(state) {
+    var remaining = state.board.filter(function (row) {
+      return row.some(function (cell) { return cell === 0; });
+    });
+    var cleared = BOARD_H - remaining.length;
+    if (cleared > 0) {
+      var newRows = [];
+      for (var i = 0; i < cleared; i++) newRows.push(new Array(BOARD_W).fill(0));
+      state.board = newRows.concat(remaining);
+      state.lines += cleared;
+      state.score += SCORE_TABLE[cleared] || 0;
+    }
+  }
+
+  function canAct(state) {
+    return state.status === 'running' && state.current;
+  }
+
+  function move(state, dir) {
+    if (!canAct(state)) return state;
+    var c = state.current;
+    var dx = dir === 'left' ? -1 : dir === 'right' ? 1 : 0;
+    if (dx === 0) return state;
+    if (!collides(state, c.type, c.rot, c.x + dx, c.y)) {
+      c.x += dx;
+      registerMovementResetsLockDelay(state);
+    }
+    return state;
+  }
+
+  function rotate(state) {
+    if (!canAct(state)) return state;
+    var c = state.current;
+    var newRot = (c.rot + 1) % 4;
+    for (var i = 0; i < KICK_OFFSETS.length; i++) {
+      var kx = c.x + KICK_OFFSETS[i].x;
+      var ky = c.y + KICK_OFFSETS[i].y;
+      if (!collides(state, c.type, newRot, kx, ky)) {
+        c.rot = newRot;
+        c.x = kx;
+        c.y = ky;
+        registerMovementResetsLockDelay(state);
+        return state;
+      }
+    }
+    return state; // no valid kick found, rotation ignored
+  }
+
+  function registerMovementResetsLockDelay(state) {
+    if (state.lockAcc === null) return;
+    // lockResets is a lifetime-per-piece budget; it is never reset by lifting
+    // off the floor, only by spawning a new piece. Once the budget is spent,
+    // leave the running lock timer untouched so kicking the piece airborne
+    // repeatedly can no longer grant it unlimited time before it locks.
+    if (state.lockResets >= LOCK_MAX_RESETS) return;
+    // Consume one reset for this movement regardless of whether it lands the
+    // piece back on the floor or lifts it off a ledge, closing the loophole
+    // where sliding off an edge granted an unlimited extra airborne timer.
+    state.lockResets += 1;
+    if (isGrounded(state)) {
+      state.lockAcc = 0;
+    } else {
+      state.lockAcc = null;
+    }
+  }
+
+  function softDrop(state, held) {
+    if (!canAct(state)) return state;
+    state.softDrop = !!held;
+    return state;
+  }
+
+  function landingY(state) {
+    if (!state.current) return null;
+    var c = state.current;
+    var y = c.y;
+    while (!collides(state, c.type, c.rot, c.x, y + 1)) y++;
+    return y;
+  }
+
+  function hardDrop(state) {
+    if (!canAct(state)) return state;
+    var c = state.current;
+    c.y = landingY(state);
+    lockPiece(state);
+    return state;
+  }
+
+  function step(state, dtSeconds) {
+    if (state.status !== 'running' || !state.current) return state;
+    var dtMs = dtSeconds * 1000;
+    var speed = state.softDrop ? GRAVITY_MS / 8 : GRAVITY_MS;
+    state.gravityAcc += dtMs;
+    while (state.gravityAcc >= speed) {
+      state.gravityAcc -= speed;
+      var c = state.current;
+      if (!collides(state, c.type, c.rot, c.x, c.y + 1)) {
+        c.y += 1;
+        // Only clear the lock timer while the reset budget still has room;
+        // once it's exhausted, preserve the running timer so airborne kicks
+        // can't stall the lock indefinitely.
+        if (state.lockResets < LOCK_MAX_RESETS) state.lockAcc = null;
+      } else {
+        if (state.lockAcc === null) state.lockAcc = 0;
+      }
+    }
+    if (state.current && isGrounded(state)) {
+      if (state.lockAcc === null) state.lockAcc = 0;
+      state.lockAcc += dtMs;
+      if (state.lockAcc >= LOCK_DELAY_MS) {
+        lockPiece(state);
+      }
+    } else if (state.current) {
+      if (state.lockResets < LOCK_MAX_RESETS) state.lockAcc = null;
+    }
+    return state;
+  }
+
+  return {
+    BOARD_W: BOARD_W,
+    BOARD_H: BOARD_H,
+    GRAVITY_MS: GRAVITY_MS,
+    LOCK_DELAY_MS: LOCK_DELAY_MS,
+    LOCK_MAX_RESETS: LOCK_MAX_RESETS,
+    DAS_MS: DAS_MS,
+    REPEAT_MS: REPEAT_MS,
+    SCORE_TABLE: SCORE_TABLE,
+    PIECE_TYPES: PIECE_TYPES,
+    PIECE_IDS: PIECE_IDS,
+    shapeCells: shapeCells,
+    createState: createState,
+    start: start,
+    pause: pause,
+    resume: resume,
+    reset: reset,
+    move: move,
+    rotate: rotate,
+    softDrop: softDrop,
+    hardDrop: hardDrop,
+    step: step,
+    landingY: landingY
+  };
+}));
+
+</script>
+<script>
+/**
+ * app.js — DOM/canvas wiring for 블록 한 줄. Depends on window.BlockEngine
+ * (see engine.js). No game logic lives here beyond input timing (DAS/repeat)
+ * and rendering; all rules/collision live in the engine.
+ */
+(function () {
+  'use strict';
+
+  var Engine = window.BlockEngine;
+  var CELL = 28; // px, internal canvas resolution unit
+
+  var COLORS = {
+    1: { fill: '#3E8E8A', hi: '#6FBAB4' }, // I — deep teal
+    2: { fill: '#D9764C', hi: '#F0A578' }, // O — coral
+    3: { fill: '#9C7BAE', hi: '#C6ACD6' }, // T — plum
+    4: { fill: '#7FA06B', hi: '#A8C793' }, // S — sage
+    5: { fill: '#C1553F', hi: '#E08669' }, // Z — rust
+    6: { fill: '#4C6B8A', hi: '#7C9CBC' }, // J — slate
+    7: { fill: '#C99A3E', hi: '#E4BE6E' }  // L — amber
+  };
+
+  var boardCanvas = document.getElementById('board');
+  var boardCtx = boardCanvas.getContext('2d');
+  var nextCanvases = [
+    document.getElementById('next0'),
+    document.getElementById('next1'),
+    document.getElementById('next2')
+  ];
+  var nextCtxs = nextCanvases.map(function (c) { return c.getContext('2d'); });
+
+  var scoreEl = document.getElementById('score');
+  var linesEl = document.getElementById('lines');
+  var statusEl = document.getElementById('status');
+  var nextNamesEl = document.getElementById('nextNames');
+
+  var startBtn = document.getElementById('btnStart');
+  var pauseBtn = document.getElementById('btnPause');
+  var resetBtn = document.getElementById('btnReset');
+  var touchButtons = document.querySelectorAll('[data-action]');
+
+  var state = Engine.createState(Date.now() >>> 0);
+  var lastRender = { score: null, lines: null, status: null, next: null };
+
+  // --- DAS / auto-repeat tracking ------------------------------------
+  var das = { left: null, right: null };
+
+  function keyAction(action, isDown, repeatEvent) {
+    if (action === 'left' || action === 'right') {
+      if (isDown) {
+        // Only arm DAS while actually running; otherwise a held arrow
+        // pressed while paused/idle would still queue a repeat that fires
+        // the instant the game resumes.
+        if (das[action] === null && state.status === 'running') {
+          Engine.move(state, action);
+          das[action] = { since: performance.now(), lastRepeat: null };
+        }
+      } else {
+        das[action] = null;
+      }
+      return;
+    }
+    if (isDown && repeatEvent) return; // ignore OS key-repeat for one-shot actions
+    switch (action) {
+      case 'softDrop':
+        Engine.softDrop(state, isDown);
+        break;
+      case 'hardDrop':
+        if (isDown) Engine.hardDrop(state);
+        break;
+      case 'rotate':
+        if (isDown) Engine.rotate(state);
+        break;
+      case 'pause':
+        if (isDown) togglePause();
+        break;
+      case 'reset':
+        if (isDown) doReset();
+        break;
+      case 'start':
+        if (isDown) doStart();
+        break;
+    }
+  }
+
+  var KEY_MAP = {
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+    ArrowDown: 'softDrop',
+    ArrowUp: 'rotate',
+    KeyX: 'rotate',
+    Space: 'hardDrop',
+    KeyP: 'pause',
+    KeyR: 'reset'
+  };
+
+  window.addEventListener('keydown', function (e) {
+    var action = KEY_MAP[e.code];
+    if (!action) return;
+    e.preventDefault(); // stop page scroll and native button re-activation
+    keyAction(action, true, e.repeat);
+  });
+
+  window.addEventListener('keyup', function (e) {
+    var action = KEY_MAP[e.code];
+    if (!action) return;
+    e.preventDefault();
+    keyAction(action, false, false);
+  });
+
+  // --- Touch / pointer buttons -----------------------------------------
+  touchButtons.forEach(function (btn) {
+    var action = btn.getAttribute('data-action');
+    btn.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      if (btn.setPointerCapture) btn.setPointerCapture(e.pointerId);
+      keyAction(action, true, false);
+    });
+    var release = function (e) {
+      e.preventDefault();
+      keyAction(action, false, false);
+    };
+    btn.addEventListener('pointerup', release);
+    btn.addEventListener('pointercancel', release);
+    btn.addEventListener('pointerleave', release);
+    btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    // Keyboard activation (Enter/Space on a focused button) fires a 'click'
+    // event without any pointer events, so it needs its own handler to be
+    // reachable without a mouse/touch. Real pointer/mouse clicks also fire
+    // a trailing 'click' after pointerdown/up already handled the action;
+    // those are distinguished by MouseEvent.detail being a nonzero click
+    // count, whereas a keyboard-synthesized click reports detail === 0.
+    btn.addEventListener('click', function (e) {
+      if (e.detail !== 0) return;
+      keyAction(action, true, false);
+      keyAction(action, false, false);
+    });
+  });
+
+  startBtn.addEventListener('click', doStart);
+  pauseBtn.addEventListener('click', togglePause);
+  resetBtn.addEventListener('click', doReset);
+
+  function doStart() {
+    Engine.start(state);
+  }
+
+  function togglePause() {
+    if (state.status === 'running') {
+      // Clear DAS on manual pause too, same as the blur/hidden auto-pause,
+      // so a held arrow key doesn't resume as a queued repeat move.
+      das.left = null;
+      das.right = null;
+      Engine.pause(state);
+    } else if (state.status === 'paused') {
+      Engine.resume(state);
+    }
+  }
+
+  function doReset() {
+    das.left = null;
+    das.right = null;
+    Engine.reset(state, Date.now() >>> 0);
+  }
+
+  // --- Pause on blur / hidden, clear held inputs, require explicit resume
+  function forcePauseAndClearInputs() {
+    das.left = null;
+    das.right = null;
+    Engine.softDrop(state, false);
+    Engine.pause(state);
+  }
+  window.addEventListener('blur', forcePauseAndClearInputs);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) forcePauseAndClearInputs();
+  });
+
+  // --- Rendering ----------------------------------------------------
+  function drawCell(ctx, x, y, colorId, ghost) {
+    var c = COLORS[colorId];
+    var px = x * CELL;
+    var py = y * CELL;
+    if (ghost) {
+      ctx.strokeStyle = 'rgba(31,78,74,0.55)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px + 2, py + 2, CELL - 4, CELL - 4);
+      return;
+    }
+    ctx.fillStyle = c.fill;
+    ctx.fillRect(px, py, CELL, CELL);
+    ctx.strokeStyle = '#2B2620';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(px + 0.75, py + 0.75, CELL - 1.5, CELL - 1.5);
+    ctx.fillStyle = c.hi;
+    ctx.fillRect(px + 4, py + 4, CELL - 16, CELL - 16);
+  }
+
+  function renderBoard() {
+    var w = Engine.BOARD_W, h = Engine.BOARD_H;
+    boardCtx.fillStyle = '#F4EDE0';
+    boardCtx.fillRect(0, 0, w * CELL, h * CELL);
+
+    boardCtx.strokeStyle = 'rgba(43,38,32,0.12)';
+    boardCtx.lineWidth = 1;
+    for (var gx = 0; gx <= w; gx++) {
+      boardCtx.beginPath();
+      boardCtx.moveTo(gx * CELL, 0);
+      boardCtx.lineTo(gx * CELL, h * CELL);
+      boardCtx.stroke();
+    }
+    for (var gy = 0; gy <= h; gy++) {
+      boardCtx.beginPath();
+      boardCtx.moveTo(0, gy * CELL);
+      boardCtx.lineTo(w * CELL, gy * CELL);
+      boardCtx.stroke();
+    }
+
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var v = state.board[y][x];
+        if (v !== 0) drawCell(boardCtx, x, y, v, false);
+      }
+    }
+
+    if (state.current) {
+      var ghostY = Engine.landingY(state);
+      var cells = Engine.shapeCells(state.current.type, state.current.rot);
+      var i;
+      if (ghostY !== state.current.y) {
+        for (i = 0; i < cells.length; i++) {
+          var gx2 = state.current.x + cells[i].x;
+          var gy2 = ghostY + cells[i].y;
+          if (gy2 >= 0) drawCell(boardCtx, gx2, gy2, state.current.type, true);
+        }
+      }
+      var id = Engine.PIECE_IDS[state.current.type];
+      for (i = 0; i < cells.length; i++) {
+        var cx = state.current.x + cells[i].x;
+        var cy = state.current.y + cells[i].y;
+        if (cy >= 0) drawCell(boardCtx, cx, cy, id, false);
+      }
+    }
+  }
+
+  function renderNext() {
+    var namesChanged = !lastRender.next || state.next.join(',') !== lastRender.next.join(',');
+    for (var i = 0; i < 3; i++) {
+      var ctx = nextCtxs[i];
+      ctx.fillStyle = '#F4EDE0';
+      ctx.fillRect(0, 0, 4 * (CELL * 0.6), 4 * (CELL * 0.6));
+      var type = state.next[i];
+      if (!type) continue;
+      var small = CELL * 0.6;
+      var cells = Engine.shapeCells(type, 0);
+      var id = Engine.PIECE_IDS[type];
+      var c = COLORS[id];
+      cells.forEach(function (cell) {
+        ctx.fillStyle = c.fill;
+        ctx.fillRect(cell.x * small, cell.y * small, small, small);
+        ctx.strokeStyle = '#2B2620';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cell.x * small + 0.5, cell.y * small + 0.5, small - 1, small - 1);
+      });
+    }
+    if (namesChanged) {
+      nextNamesEl.textContent = state.next.join(', ');
+      lastRender.next = state.next.slice();
+    }
+  }
+
+  function renderAccessibleInfo() {
+    if (state.score !== lastRender.score) {
+      scoreEl.textContent = String(state.score);
+      lastRender.score = state.score;
+    }
+    if (state.lines !== lastRender.lines) {
+      linesEl.textContent = String(state.lines);
+      lastRender.lines = state.lines;
+    }
+    if (state.status !== lastRender.status) {
+      var labels = {
+        idle: '대기 중 — 시작을 눌러주세요',
+        running: '진행 중',
+        paused: '일시 정지',
+        gameover: '게임 종료'
+      };
+      statusEl.textContent = labels[state.status] || state.status;
+      lastRender.status = state.status;
+      pauseBtn.disabled = state.status !== 'running' && state.status !== 'paused';
+      // Start is only a valid action from idle; running/paused/gameover are
+      // all no-ops for it (gameover requires Reset instead).
+      startBtn.disabled = state.status !== 'idle';
+    }
+  }
+
+  // --- Main loop ------------------------------------------------------
+  var lastTs = null;
+  function loop(ts) {
+    if (lastTs !== null) {
+      var dt = (ts - lastTs) / 1000;
+      if (state.status === 'running') {
+        applyDas(ts);
+        Engine.step(state, dt);
+      }
+    }
+    lastTs = ts;
+    renderBoard();
+    renderNext();
+    renderAccessibleInfo();
+    requestAnimationFrame(loop);
+  }
+
+  function applyDas(ts) {
+    ['left', 'right'].forEach(function (dir) {
+      var d = das[dir];
+      if (!d) return;
+      var elapsed = ts - d.since;
+      if (elapsed < Engine.DAS_MS) return;
+      if (d.lastRepeat === null || ts - d.lastRepeat >= Engine.REPEAT_MS) {
+        Engine.move(state, dir);
+        d.lastRepeat = ts;
+      }
+    });
+  }
+
+  renderAccessibleInfo();
+  requestAnimationFrame(loop);
+}());
+
+</script>
+</body>
+</html>
