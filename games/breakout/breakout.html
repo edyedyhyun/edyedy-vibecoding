@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>벽돌깨기</title>
+<style>
+  :root {
+    --cream: #f5efe3;
+    --cream-dark: #e8dfc9;
+    --ink: #241f21;
+    --ink-soft: #4a4249;
+    --teal: #1f7a72;
+    --teal-dark: #145a53;
+    --coral: #e8654f;
+    --coral-dark: #c94a37;
+    --panel: #fffaf0;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow: hidden;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    padding: 12px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 8px;
+    user-select: none;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 1.9rem;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+  }
+
+  header p {
+    margin: 2px 0 0;
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+  }
+
+  #board-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 960px;
+    padding: 6px 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ink);
+    user-select: none;
+  }
+
+  #hud span.value {
+    color: var(--teal-dark);
+  }
+
+  #stage {
+    position: relative;
+    background: var(--panel);
+    border-radius: 14px;
+    box-shadow: 0 12px 30px rgba(36, 31, 33, 0.18), inset 0 0 0 2px var(--cream-dark);
+    overflow: hidden;
+  }
+
+  canvas {
+    display: block;
+    touch-action: none;
+  }
+
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(36, 31, 33, 0.5);
+    color: var(--cream);
+    text-align: center;
+    padding: 20px;
+  }
+
+  #overlay.hidden { display: none; }
+
+  #overlay h2 {
+    margin: 0;
+    font-size: 1.6rem;
+  }
+
+  #overlay p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--cream-dark);
+  }
+
+  #action-btn {
+    appearance: none;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 32px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    background: var(--coral);
+    color: var(--panel);
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(201, 74, 55, 0.4);
+    transition: transform 0.08s ease, background 0.15s ease;
+  }
+
+  #action-btn:hover { background: var(--coral-dark); }
+  #action-btn:active { transform: scale(0.96); }
+  #action-btn:focus-visible {
+    outline: 3px solid var(--teal);
+    outline-offset: 3px;
+  }
+
+  #controls-hint {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    text-align: center;
+    max-width: 960px;
+    user-select: none;
+  }
+
+  #pause-btn {
+    appearance: none;
+    border: 2px solid var(--teal);
+    background: transparent;
+    color: var(--teal-dark);
+    border-radius: 8px;
+    padding: 4px 12px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  #pause-btn:hover { background: var(--teal); color: var(--panel); }
+  #pause-btn:focus-visible {
+    outline: 3px solid var(--coral);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 720px) {
+    header h1 { font-size: 1.4rem; }
+    header p { font-size: 0.78rem; }
+    #hud { font-size: 0.85rem; }
+    #controls-hint { font-size: 0.72rem; }
+  }
+</style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>벽돌깨기</h1>
+      <p>공 하나, 벽돌 한 판</p>
+    </header>
+    <div id="board-wrap">
+      <div id="hud">
+        <span>점수: <span class="value" id="score-value">0</span></span>
+        <span>남은 벽돌: <span class="value" id="bricks-value">60</span></span>
+        <span>목숨: <span class="value" id="lives-value">3</span></span>
+        <button id="pause-btn" type="button" aria-label="일시정지">일시정지</button>
+      </div>
+      <div id="stage">
+        <canvas id="game-canvas" width="960" height="600" aria-label="벽돌깨기 게임판" role="img"></canvas>
+        <div id="overlay" role="status" aria-live="polite">
+          <h2 id="overlay-title">벽돌깨기</h2>
+          <p id="overlay-desc">스페이스바 또는 버튼으로 공을 던지세요.</p>
+          <button id="action-btn" type="button">시작하기</button>
+        </div>
+      </div>
+      <p id="controls-hint">←/→ 또는 A/D로 패들 이동 · 마우스/터치 드래그 · 패들에 맞는 위치에 따라 공 방향 조절(중앙=수직, 가장자리=최대 60°) · 스페이스 발사·이어하기 · P 일시정지 · R 재시작</p>
+    </div>
+  </div>
+  <script>
+/**
+ * BreakoutEngine — pure, deterministic physics/state module.
+ * UMD: works as CommonJS (module.exports) or browser global (window.BreakoutEngine).
+ *
+ * This module has NO DOM dependencies. It only deals with numbers/objects.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.BreakoutEngine = factory();
+  }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // ---- Constants -----------------------------------------------------
+
+  var WIDTH = 960;
+  var HEIGHT = 600;
+
+  var PADDLE_WIDTH = 110;
+  var PADDLE_HEIGHT = 16;
+  var PADDLE_Y = HEIGHT - 40;
+  var PADDLE_SPEED = 620; // px/sec
+
+  var BALL_RADIUS = 8;
+  var BALL_SPEED_START = 320; // px/sec
+  var BALL_SPEED_MAX = 460; // px/sec cap
+
+  var BRICK_ROWS = 6;
+  var BRICK_COLS = 10;
+  var BRICK_TOP = 70;
+  var BRICK_LEFT = 30;
+  var BRICK_GAP = 8;
+  var BRICK_WIDTH = (WIDTH - BRICK_LEFT * 2 - BRICK_GAP * (BRICK_COLS - 1)) / BRICK_COLS;
+  var BRICK_HEIGHT = 24;
+  var BRICK_SCORE = 10;
+
+  var LIVES_START = 3;
+  var FIXED_DT = 1 / 120; // fixed timestep for stepping
+  var MAX_SUBSTEPS = 8; // safety cap on substeps per step() call
+
+  var STATUS = {
+    READY: 'ready', // ball resting on paddle, waiting for launch
+    PLAYING: 'playing',
+    PAUSED: 'paused',
+    WON: 'won',
+    LOST_BALL: 'lost_ball', // life lost, waiting for explicit continue
+    GAME_OVER: 'game_over'
+  };
+
+  // ---- State -----------------------------------------------------------
+
+  function createBricks() {
+    var bricks = [];
+    for (var row = 0; row < BRICK_ROWS; row++) {
+      for (var col = 0; col < BRICK_COLS; col++) {
+        bricks.push({
+          x: BRICK_LEFT + col * (BRICK_WIDTH + BRICK_GAP),
+          y: BRICK_TOP + row * (BRICK_HEIGHT + BRICK_GAP),
+          w: BRICK_WIDTH,
+          h: BRICK_HEIGHT,
+          row: row,
+          col: col,
+          alive: true
+        });
+      }
+    }
+    return bricks;
+  }
+
+  function ballRestPosition(paddleX) {
+    return {
+      x: paddleX + PADDLE_WIDTH / 2,
+      y: PADDLE_Y - BALL_RADIUS
+    };
+  }
+
+  /**
+   * Creates a fresh game state.
+   * Shape:
+   * {
+   *   status: STATUS.*,
+   *   paddle: { x, y, w, h },
+   *   ball: { x, y, vx, vy, r },
+   *   bricks: [{ x, y, w, h, row, col, alive }],
+   *   score: number,
+   *   lives: number,
+   *   bricksRemaining: number
+   * }
+   */
+  function createState() {
+    var paddleX = (WIDTH - PADDLE_WIDTH) / 2;
+    var restPos = ballRestPosition(paddleX);
+    var bricks = createBricks();
+    return {
+      status: STATUS.READY,
+      paddle: { x: paddleX, y: PADDLE_Y, w: PADDLE_WIDTH, h: PADDLE_HEIGHT },
+      ball: { x: restPos.x, y: restPos.y, vx: 0, vy: 0, r: BALL_RADIUS },
+      bricks: bricks,
+      score: 0,
+      lives: LIVES_START,
+      bricksRemaining: bricks.length
+    };
+  }
+
+  /** Resets state in-place to the initial configuration. */
+  function reset(state) {
+    var fresh = createState();
+    for (var key in fresh) {
+      if (Object.prototype.hasOwnProperty.call(fresh, key)) {
+        state[key] = fresh[key];
+      }
+    }
+    return state;
+  }
+
+  /**
+   * Launches the ball from resting position, if currently READY or LOST_BALL.
+   * Fires at a fixed upward angle with slight horizontal randomness-free bias
+   * (deterministic: always straight-ish up-right diagonal) so tests are stable.
+   */
+  function launch(state) {
+    if (state.status !== STATUS.READY && state.status !== STATUS.LOST_BALL) {
+      return state;
+    }
+    var angle = -Math.PI / 3; // 60 degrees up from horizontal, toward upper-right
+    state.ball.vx = BALL_SPEED_START * Math.cos(angle);
+    state.ball.vy = BALL_SPEED_START * Math.sin(angle);
+    state.status = STATUS.PLAYING;
+    return state;
+  }
+
+  function pause(state) {
+    if (state.status === STATUS.PLAYING) {
+      state.status = STATUS.PAUSED;
+    }
+    return state;
+  }
+
+  function resume(state) {
+    if (state.status === STATUS.PAUSED) {
+      state.status = STATUS.PLAYING;
+    }
+    return state;
+  }
+
+  // ---- Input -------------------------------------------------------------
+
+  /**
+   * input: { left: bool, right: bool }
+   */
+  function movePaddle(state, input, dt) {
+    var dx = 0;
+    if (input.left) dx -= PADDLE_SPEED * dt;
+    if (input.right) dx += PADDLE_SPEED * dt;
+    state.paddle.x += dx;
+    if (state.paddle.x < 0) state.paddle.x = 0;
+    if (state.paddle.x + state.paddle.w > WIDTH) state.paddle.x = WIDTH - state.paddle.w;
+  }
+
+  // ---- Collision helpers ---------------------------------------------
+
+  function clampSpeed(ball) {
+    var speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+    if (speed > BALL_SPEED_MAX) {
+      var scale = BALL_SPEED_MAX / speed;
+      ball.vx *= scale;
+      ball.vy *= scale;
+    }
+  }
+
+  function circleRectOverlap(cx, cy, r, rx, ry, rw, rh) {
+    var closestX = Math.max(rx, Math.min(cx, rx + rw));
+    var closestY = Math.max(ry, Math.min(cy, ry + rh));
+    var dx = cx - closestX;
+    var dy = cy - closestY;
+    return (dx * dx + dy * dy) < (r * r);
+  }
+
+  /**
+   * Resolve ball vs paddle collision using conventional mirrored vertical
+   * velocity while retaining incoming horizontal velocity.
+   * Returns true if a collision was resolved.
+   */
+  var PADDLE_BOUNCE_MAX_ANGLE = Math.PI / 3; // 60deg from vertical, at the paddle edges
+
+  function resolvePaddleCollision(ball, paddle) {
+    if (ball.vy <= 0) return false; // only collide while moving downward
+    // Only a legitimate top hit: ball center must still be above the
+    // paddle's top edge (prevents scooping a ball already below it).
+    if (ball.y > paddle.y) return false;
+    if (!circleRectOverlap(ball.x, ball.y, ball.r, paddle.x, paddle.y, paddle.w, paddle.h)) {
+      return false;
+    }
+    // Push ball to rest exactly on top of paddle to avoid repeated overlap.
+    ball.y = paddle.y - ball.r;
+
+    // Steer the bounce by landing position: center of paddle sends the ball
+    // straight up, the edges send it up to ±60deg from vertical.
+    var half = paddle.w / 2;
+    var hitOffset = (ball.x - (paddle.x + half)) / half; // -1..1
+    if (hitOffset < -1) hitOffset = -1;
+    if (hitOffset > 1) hitOffset = 1;
+    var angle = hitOffset * PADDLE_BOUNCE_MAX_ANGLE; // from vertical, + = right
+    var speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+    ball.vx = speed * Math.sin(angle);
+    ball.vy = -speed * Math.cos(angle);
+    clampSpeed(ball);
+    return true;
+  }
+
+  /**
+   * Resolve ball vs single brick collision (axis-aligned), determining
+   * whether the hit was on a vertical (left/right) or horizontal (top/bottom)
+   * side based on penetration depth, then mirror the corresponding velocity
+   * component. Returns true if a collision occurred.
+   */
+  function resolveBrickCollision(ball, brick) {
+    if (!circleRectOverlap(ball.x, ball.y, ball.r, brick.x, brick.y, brick.w, brick.h)) {
+      return false;
+    }
+    var closestX = Math.max(brick.x, Math.min(ball.x, brick.x + brick.w));
+    var closestY = Math.max(brick.y, Math.min(ball.y, brick.y + brick.h));
+    var dx = ball.x - closestX;
+    var dy = ball.y - closestY;
+
+    // Determine overlap on each axis to pick the shallower resolution axis.
+    var overlapX = ball.r - Math.abs(dx);
+    var overlapY = ball.r - Math.abs(dy);
+
+    if (overlapX < overlapY) {
+      // Side hit (left/right)
+      ball.vx = -ball.vx;
+      ball.x += dx > 0 ? overlapX : -overlapX;
+    } else {
+      // Top/bottom hit
+      ball.vy = -ball.vy;
+      ball.y += dy > 0 ? overlapY : -overlapY;
+    }
+    return true;
+  }
+
+  /**
+   * Advances the ball by dt using swept substeps to avoid tunnelling through
+   * thin objects at high speed. Handles walls, paddle, and bricks.
+   * Mutates state in place. Returns nothing.
+   */
+  function advanceBall(state, dt) {
+    var ball = state.ball;
+    var remaining = dt;
+    // Substep sized so the ball never travels more than ~half its radius
+    // per substep, bounded by MAX_SUBSTEPS for safety.
+    var speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+    var maxTravelPerStep = ball.r * 0.5;
+    var steps = 1;
+    if (speed > 0) {
+      steps = Math.ceil((speed * dt) / maxTravelPerStep);
+    }
+    steps = Math.max(1, Math.min(MAX_SUBSTEPS, steps));
+    var subDt = dt / steps;
+
+    for (var s = 0; s < steps; s++) {
+      ball.x += ball.vx * subDt;
+      ball.y += ball.vy * subDt;
+
+      // Wall collisions — only reflect when actually heading into the wall,
+      // so a ball already moving back toward the interior isn't re-flipped.
+      if (ball.x - ball.r < 0 && ball.vx < 0) {
+        ball.x = ball.r;
+        ball.vx = -ball.vx;
+      } else if (ball.x + ball.r > WIDTH && ball.vx > 0) {
+        ball.x = WIDTH - ball.r;
+        ball.vx = -ball.vx;
+      }
+      if (ball.y - ball.r < 0 && ball.vy < 0) {
+        ball.y = ball.r;
+        ball.vy = -ball.vy;
+      }
+
+      // Paddle collision
+      resolvePaddleCollision(ball, state.paddle);
+
+      // Brick collisions: resolve at most one per substep (prevents double
+      // scoring from overlapping bricks in the same substep) since bricks
+      // don't move and gaps prevent simultaneous multi-brick overlap.
+      for (var i = 0; i < state.bricks.length; i++) {
+        var brick = state.bricks[i];
+        if (!brick.alive) continue;
+        if (resolveBrickCollision(ball, brick)) {
+          brick.alive = false;
+          state.score += BRICK_SCORE;
+          state.bricksRemaining--;
+          if (state.bricksRemaining <= 0) {
+            // Win immediately and stop substepping, even mid-chunk on a
+            // large dt — don't let the ball keep moving into a cleared board.
+            state.status = STATUS.WON;
+            return;
+          }
+          break;
+        }
+      }
+
+      // Bottom loss check — stop substepping once ball is lost.
+      if (ball.y - ball.r > HEIGHT) {
+        loseLife(state);
+        return;
+      }
+    }
+  }
+
+  function loseLife(state) {
+    state.lives--;
+    var restPos = ballRestPosition(state.paddle.x);
+    state.ball.x = restPos.x;
+    state.ball.y = restPos.y;
+    state.ball.vx = 0;
+    state.ball.vy = 0;
+    if (state.lives <= 0) {
+      state.status = STATUS.GAME_OVER;
+    } else {
+      state.status = STATUS.LOST_BALL;
+    }
+  }
+
+  // ---- Main step ----------------------------------------------------------
+
+  /**
+   * Advances the simulation by dt seconds using fixed sub-steps of FIXED_DT.
+   * input: { left: bool, right: bool }
+   * No-ops for terminal/paused/ready states except paddle following the
+   * ball in READY (ball rests on paddle before launch).
+   */
+  function step(state, dt, input) {
+    input = input || { left: false, right: false };
+
+    if (state.status === STATUS.WON || state.status === STATUS.GAME_OVER) {
+      return state; // frozen terminal states
+    }
+
+    if (state.status === STATUS.PAUSED) {
+      return state; // frozen until resumed
+    }
+
+    if (state.status === STATUS.READY || state.status === STATUS.LOST_BALL) {
+      // Paddle still movable; ball follows paddle while resting.
+      movePaddle(state, input, dt);
+      var restPos = ballRestPosition(state.paddle.x);
+      state.ball.x = restPos.x;
+      state.ball.y = restPos.y;
+      return state;
+    }
+
+    // PLAYING: advance using fixed sub-timesteps for determinism & stability.
+    var remaining = dt;
+    while (remaining > 0) {
+      var chunk = Math.min(FIXED_DT, remaining);
+      movePaddle(state, input, chunk);
+      advanceBall(state, chunk);
+      remaining -= chunk;
+      if (state.status !== STATUS.PLAYING) break; // life lost or won mid-loop
+    }
+
+    if (state.bricksRemaining <= 0 && state.status === STATUS.PLAYING) {
+      state.status = STATUS.WON;
+    }
+
+    return state;
+  }
+
+  return {
+    STATUS: STATUS,
+    WIDTH: WIDTH,
+    HEIGHT: HEIGHT,
+    PADDLE_WIDTH: PADDLE_WIDTH,
+    PADDLE_HEIGHT: PADDLE_HEIGHT,
+    PADDLE_Y: PADDLE_Y,
+    PADDLE_SPEED: PADDLE_SPEED,
+    BALL_RADIUS: BALL_RADIUS,
+    BALL_SPEED_START: BALL_SPEED_START,
+    BALL_SPEED_MAX: BALL_SPEED_MAX,
+    BRICK_ROWS: BRICK_ROWS,
+    BRICK_COLS: BRICK_COLS,
+    BRICK_WIDTH: BRICK_WIDTH,
+    BRICK_HEIGHT: BRICK_HEIGHT,
+    BRICK_SCORE: BRICK_SCORE,
+    LIVES_START: LIVES_START,
+    FIXED_DT: FIXED_DT,
+    createState: createState,
+    reset: reset,
+    launch: launch,
+    pause: pause,
+    resume: resume,
+    step: step
+  };
+});
+
+</script>
+  <script>
+(function () {
+  'use strict';
+
+  var Engine = window.BreakoutEngine;
+  var state = Engine.createState();
+
+  var canvas = document.getElementById('game-canvas');
+  var ctx = canvas.getContext('2d');
+  var stage = document.getElementById('stage');
+  var overlay = document.getElementById('overlay');
+  var overlayTitle = document.getElementById('overlay-title');
+  var overlayDesc = document.getElementById('overlay-desc');
+  var actionBtn = document.getElementById('action-btn');
+  var pauseBtn = document.getElementById('pause-btn');
+  var scoreValue = document.getElementById('score-value');
+  var bricksValue = document.getElementById('bricks-value');
+  var livesValue = document.getElementById('lives-value');
+
+  // ---- Cosmetic particles (purely visual, no gameplay effect) ----------
+  var particles = [];
+
+  function spawnParticles(x, y, color) {
+    for (var i = 0; i < 8; i++) {
+      var angle = Math.random() * Math.PI * 2;
+      var speed = 40 + Math.random() * 90;
+      particles.push({
+        x: x, y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.4 + Math.random() * 0.3,
+        maxLife: 0.7,
+        color: color
+      });
+    }
+  }
+
+  function updateParticles(dt) {
+    for (var i = particles.length - 1; i >= 0; i--) {
+      var p = particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  var BRICK_COLORS = ['#e8654f', '#ef9b52', '#e8c04f', '#7fb069', '#1f7a72', '#3d6cb9'];
+
+  // Track alive-count per brick row to detect newly-broken bricks for particles.
+  var lastAliveById = {};
+  state.bricks.forEach(function (b) {
+    lastAliveById[b.row + '-' + b.col] = true;
+  });
+
+  function checkNewlyBroken() {
+    state.bricks.forEach(function (b) {
+      var key = b.row + '-' + b.col;
+      if (lastAliveById[key] && !b.alive) {
+        spawnParticles(b.x + b.w / 2, b.y + b.h / 2, BRICK_COLORS[b.row % BRICK_COLORS.length]);
+      }
+      lastAliveById[key] = b.alive;
+    });
+  }
+
+  // ---- Input state -------------------------------------------------------
+
+  var input = { left: false, right: false };
+  var pointerActive = false;
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+  }
+
+  window.addEventListener('keydown', function (e) {
+    if (isTypingTarget(document.activeElement)) return;
+
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+      input.left = true;
+      e.preventDefault();
+    } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+      input.right = true;
+      e.preventDefault();
+    } else if (e.code === 'Space') {
+      // Let a focused button handle its own native Space activation (click)
+      // instead of also triggering our handler, which would double-fire.
+      if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
+        return;
+      }
+      e.preventDefault();
+      if (e.repeat) return;
+      handlePrimaryAction();
+    } else if (e.key === 'p' || e.key === 'P') {
+      if (e.repeat) return;
+      togglePause();
+    } else if (e.key === 'r' || e.key === 'R') {
+      if (e.repeat) return;
+      doRestart();
+    }
+  });
+
+  window.addEventListener('keyup', function (e) {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+      input.left = false;
+    } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+      input.right = false;
+    }
+  });
+
+  // Mouse / touch drag — moves paddle directly to pointer x (converted to
+  // virtual canvas coordinates).
+  function pointerToVirtualX(clientX) {
+    var rect = canvas.getBoundingClientRect();
+    var scale = Engine.WIDTH / rect.width;
+    return (clientX - rect.left) * scale;
+  }
+
+  function paddleInputAllowed() {
+    return state.status === Engine.STATUS.PLAYING ||
+      state.status === Engine.STATUS.READY ||
+      state.status === Engine.STATUS.LOST_BALL;
+  }
+
+  function movePaddleTo(virtualX) {
+    if (!paddleInputAllowed()) return;
+    var half = state.paddle.w / 2;
+    var x = virtualX - half;
+    if (x < 0) x = 0;
+    if (x + state.paddle.w > Engine.WIDTH) x = Engine.WIDTH - state.paddle.w;
+    state.paddle.x = x;
+    if (state.status === Engine.STATUS.READY || state.status === Engine.STATUS.LOST_BALL) {
+      state.ball.x = state.paddle.x + state.paddle.w / 2;
+      state.ball.y = Engine.PADDLE_Y - state.ball.r;
+    }
+  }
+
+  canvas.addEventListener('mousedown', function (e) {
+    pointerActive = true;
+    movePaddleTo(pointerToVirtualX(e.clientX));
+  });
+  window.addEventListener('mousemove', function (e) {
+    if (!pointerActive) return;
+    movePaddleTo(pointerToVirtualX(e.clientX));
+  });
+  window.addEventListener('mouseup', function () {
+    pointerActive = false;
+  });
+
+  canvas.addEventListener('touchstart', function (e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    if (t) movePaddleTo(pointerToVirtualX(t.clientX));
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    if (t) movePaddleTo(pointerToVirtualX(t.clientX));
+  }, { passive: false });
+
+  // ---- Actions -----------------------------------------------------------
+
+  var wasPausedByBlur = false;
+
+  function handlePrimaryAction() {
+    if (state.status === Engine.STATUS.READY || state.status === Engine.STATUS.LOST_BALL) {
+      Engine.launch(state);
+      updateOverlay();
+    } else if (state.status === Engine.STATUS.PAUSED) {
+      resumeGame();
+    } else if (state.status === Engine.STATUS.WON || state.status === Engine.STATUS.GAME_OVER) {
+      doRestart();
+    }
+  }
+
+  function togglePause() {
+    if (state.status === Engine.STATUS.PLAYING) {
+      pauseGame();
+    } else if (state.status === Engine.STATUS.PAUSED) {
+      resumeGame();
+    }
+  }
+
+  function pauseGame() {
+    Engine.pause(state);
+    updateOverlay();
+  }
+
+  function resumeGame() {
+    Engine.resume(state);
+    wasPausedByBlur = false;
+    updateOverlay();
+  }
+
+  function doRestart() {
+    Engine.reset(state);
+    state.bricks.forEach(function (b) {
+      lastAliveById[b.row + '-' + b.col] = true;
+    });
+    particles.length = 0;
+    updateOverlay();
+  }
+
+  actionBtn.addEventListener('click', handlePrimaryAction);
+  pauseBtn.addEventListener('click', togglePause);
+
+  // Auto-pause on blur / hidden tab, requires explicit resume.
+  function clearHeldInput() {
+    input.left = false;
+    input.right = false;
+    pointerActive = false;
+  }
+
+  window.addEventListener('blur', function () {
+    clearHeldInput();
+    if (state.status === Engine.STATUS.PLAYING) {
+      Engine.pause(state);
+      wasPausedByBlur = true;
+      updateOverlay();
+    }
+  });
+  document.addEventListener('visibilitychange', function () {
+    clearHeldInput();
+    if (document.hidden && state.status === Engine.STATUS.PLAYING) {
+      Engine.pause(state);
+      wasPausedByBlur = true;
+      updateOverlay();
+    }
+  });
+
+  // ---- Overlay / HUD -------------------------------------------------
+
+  function hideOverlay() {
+    overlay.classList.add('hidden');
+  }
+
+  function showOverlay(title, desc, btnLabel) {
+    overlayTitle.textContent = title;
+    overlayDesc.textContent = desc;
+    actionBtn.textContent = btnLabel;
+    overlay.classList.remove('hidden');
+  }
+
+  function updateOverlay() {
+    switch (state.status) {
+      case Engine.STATUS.READY:
+        showOverlay('벽돌깨기', '스페이스바 또는 버튼으로 공을 던지세요.', '시작하기');
+        break;
+      case Engine.STATUS.LOST_BALL:
+        showOverlay('공을 놓쳤습니다', '남은 목숨: ' + state.lives, '다음 공 던지기');
+        break;
+      case Engine.STATUS.PAUSED:
+        showOverlay('일시정지', '이어서 진행하려면 계속하기를 누르세요.', '계속하기');
+        break;
+      case Engine.STATUS.WON:
+        showOverlay('승리!', '모든 벽돌을 깼습니다. 점수: ' + state.score, '다시 하기');
+        break;
+      case Engine.STATUS.GAME_OVER:
+        showOverlay('게임 종료', '최종 점수: ' + state.score, '다시 하기');
+        break;
+      default:
+        hideOverlay();
+    }
+    pauseBtn.textContent = state.status === Engine.STATUS.PAUSED ? '계속하기' : '일시정지';
+    pauseBtn.disabled = state.status !== Engine.STATUS.PLAYING && state.status !== Engine.STATUS.PAUSED;
+  }
+
+  var lastHud = { score: null, bricksRemaining: null, lives: null };
+
+  function updateHud() {
+    if (state.score !== lastHud.score) {
+      scoreValue.textContent = String(state.score);
+      lastHud.score = state.score;
+    }
+    if (state.bricksRemaining !== lastHud.bricksRemaining) {
+      bricksValue.textContent = String(state.bricksRemaining);
+      lastHud.bricksRemaining = state.bricksRemaining;
+    }
+    if (state.lives !== lastHud.lives) {
+      livesValue.textContent = String(state.lives);
+      lastHud.lives = state.lives;
+    }
+  }
+
+  // ---- Rendering -----------------------------------------------------
+
+  function draw() {
+    ctx.clearRect(0, 0, Engine.WIDTH, Engine.HEIGHT);
+
+    // Background
+    ctx.fillStyle = '#fffaf0';
+    ctx.fillRect(0, 0, Engine.WIDTH, Engine.HEIGHT);
+
+    // Bricks
+    state.bricks.forEach(function (b) {
+      if (!b.alive) return;
+      ctx.fillStyle = BRICK_COLORS[b.row % BRICK_COLORS.length];
+      roundRect(ctx, b.x, b.y, b.w, b.h, 5);
+      ctx.fill();
+    });
+
+    // Particles (cosmetic only)
+    particles.forEach(function (p) {
+      var alpha = Math.max(0, p.life / p.maxLife);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    // Paddle
+    ctx.fillStyle = '#241f21';
+    roundRect(ctx, state.paddle.x, state.paddle.y, state.paddle.w, state.paddle.h, 8);
+    ctx.fill();
+
+    // Ball
+    ctx.fillStyle = '#e8654f';
+    ctx.beginPath();
+    ctx.arc(state.ball.x, state.ball.y, state.ball.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#241f21';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---- Responsive fit --------------------------------------------------
+
+  function fitStage() {
+    var wrap = document.getElementById('app');
+    var availW = wrap.clientWidth;
+    var availH = wrap.clientHeight - document.querySelector('header').offsetHeight
+      - document.getElementById('hud').offsetHeight
+      - document.getElementById('controls-hint').offsetHeight
+      - 40;
+    var scale = Math.min(availW / Engine.WIDTH, availH / Engine.HEIGHT, 1);
+    if (scale <= 0 || !isFinite(scale)) scale = 1;
+    var w = Math.floor(Engine.WIDTH * scale);
+    var h = Math.floor(Engine.HEIGHT * scale);
+    stage.style.width = w + 'px';
+    stage.style.height = h + 'px';
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+  }
+
+  window.addEventListener('resize', fitStage);
+  fitStage();
+
+  // ---- Main loop -------------------------------------------------------
+
+  var lastTime = null;
+
+  function frame(timestamp) {
+    if (lastTime === null) lastTime = timestamp;
+    var dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+    if (dt > 0.05) dt = 0.05; // avoid huge jumps (e.g. tab was hidden)
+
+    var prevStatus = state.status;
+    Engine.step(state, dt, input);
+    updateParticles(dt);
+    checkNewlyBroken();
+
+    if (state.status !== prevStatus) {
+      updateOverlay();
+    }
+    updateHud();
+    draw();
+
+    requestAnimationFrame(frame);
+  }
+
+  updateOverlay();
+  updateHud();
+  requestAnimationFrame(frame);
+})();
+
+</script>
+</body>
+</html>

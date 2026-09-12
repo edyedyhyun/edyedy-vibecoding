@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>벽돌깨기</title>
+<style>
+  :root {
+    --cream: #f5efe3;
+    --cream-dark: #e8dfc9;
+    --ink: #241f21;
+    --ink-soft: #4a4249;
+    --teal: #1f7a72;
+    --teal-dark: #145a53;
+    --coral: #e8654f;
+    --coral-dark: #c94a37;
+    --panel: #fffaf0;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow: hidden;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    padding: 12px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 8px;
+    user-select: none;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 1.9rem;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+  }
+
+  header p {
+    margin: 2px 0 0;
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+  }
+
+  #board-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 960px;
+    padding: 6px 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ink);
+    user-select: none;
+  }
+
+  #hud span.value {
+    color: var(--teal-dark);
+  }
+
+  #stage {
+    position: relative;
+    background: var(--panel);
+    border-radius: 14px;
+    box-shadow: 0 12px 30px rgba(36, 31, 33, 0.18), inset 0 0 0 2px var(--cream-dark);
+    overflow: hidden;
+  }
+
+  canvas {
+    display: block;
+    touch-action: none;
+  }
+
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(36, 31, 33, 0.5);
+    color: var(--cream);
+    text-align: center;
+    padding: 20px;
+  }
+
+  #overlay.hidden { display: none; }
+
+  #overlay h2 {
+    margin: 0;
+    font-size: 1.6rem;
+  }
+
+  #overlay p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--cream-dark);
+  }
+
+  #action-btn {
+    appearance: none;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 32px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    background: var(--coral);
+    color: var(--panel);
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(201, 74, 55, 0.4);
+    transition: transform 0.08s ease, background 0.15s ease;
+  }
+
+  #action-btn:hover { background: var(--coral-dark); }
+  #action-btn:active { transform: scale(0.96); }
+  #action-btn:focus-visible {
+    outline: 3px solid var(--teal);
+    outline-offset: 3px;
+  }
+
+  #controls-hint {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    text-align: center;
+    max-width: 960px;
+    user-select: none;
+  }
+
+  #pause-btn {
+    appearance: none;
+    border: 2px solid var(--teal);
+    background: transparent;
+    color: var(--teal-dark);
+    border-radius: 8px;
+    padding: 4px 12px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  #pause-btn:hover { background: var(--teal); color: var(--panel); }
+  #pause-btn:focus-visible {
+    outline: 3px solid var(--coral);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 720px) {
+    header h1 { font-size: 1.4rem; }
+    header p { font-size: 0.78rem; }
+    #hud { font-size: 0.85rem; }
+    #controls-hint { font-size: 0.72rem; }
+  }
+</style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>벽돌깨기</h1>
+      <p>공 하나, 벽돌 한 판</p>
+    </header>
+    <div id="board-wrap">
+      <div id="hud">
+        <span>점수: <span class="value" id="score-value">0</span></span>
+        <span>남은 벽돌: <span class="value" id="bricks-value">60</span></span>
+        <span>목숨: <span class="value" id="lives-value">3</span></span>
+        <button id="pause-btn" type="button" aria-label="일시정지">일시정지</button>
+      </div>
+      <div id="stage">
+        <canvas id="game-canvas" width="960" height="600" aria-label="벽돌깨기 게임판" role="img"></canvas>
+        <div id="overlay" role="status" aria-live="polite">
+          <h2 id="overlay-title">벽돌깨기</h2>
+          <p id="overlay-desc">스페이스바 또는 버튼으로 공을 던지세요.</p>
+          <button id="action-btn" type="button">시작하기</button>
+        </div>
+      </div>
+      <p id="controls-hint">←/→ 또는 A/D로 패들 이동 · 마우스/터치 드래그 · 패들에 맞는 위치에 따라 공 방향 조절(중앙=수직, 가장자리=최대 60°) · 스페이스 발사·이어하기 · P 일시정지 · R 재시작</p>
+    </div>
+  </div>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
