@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>한 수 쉬어 가는 오목</title>
+<style>
+  :root {
+    --paper: #f4ecdd;
+    --paper-deep: #ece0c9;
+    --teal: #0f4c4c;
+    --teal-dark: #0a3838;
+    --wood-light: #c98a4e;
+    --wood-dark: #9c6431;
+    --ink: #2c2521;
+    --coral: #ff6f59;
+    --black-stone-a: #4a4a4a;
+    --black-stone-b: #060606;
+    --white-stone-a: #ffffff;
+    --white-stone-b: #d9d2c4;
+    --panel-max: 250px;
+    --board-max: 540px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    touch-action: manipulation;
+  }
+
+  .app {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  header h1 {
+    margin: 0 0 6px;
+    font-size: clamp(1.3rem, 3vw, 1.9rem);
+    color: var(--teal-dark);
+  }
+
+  .subtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--teal);
+    letter-spacing: 0.02em;
+  }
+
+  .layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .board-wrap {
+    flex: 1 1 var(--board-max);
+    max-width: var(--board-max);
+    display: flex;
+    justify-content: center;
+  }
+
+  .board-outer {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    grid-template-rows: 20px 1fr;
+    gap: 2px;
+  }
+
+  .corner { }
+
+  .col-labels {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    align-items: center;
+    justify-items: center;
+    font-size: 0.7rem;
+    color: var(--teal-dark);
+    padding-inline: 10px;
+  }
+
+  .row-labels {
+    display: grid;
+    grid-auto-flow: row;
+    grid-auto-rows: 1fr;
+    align-items: center;
+    justify-items: center;
+    font-size: 0.7rem;
+    color: var(--teal-dark);
+    padding-block: 10px;
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(15, 1fr);
+    grid-template-rows: repeat(15, 1fr);
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(255,255,255,0.15), transparent 60%),
+      linear-gradient(135deg, var(--wood-light), var(--wood-dark));
+    border: 4px solid var(--wood-dark);
+    border-radius: 6px;
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.35), 0 6px 14px rgba(0,0,0,0.25);
+    padding: 6px;
+    gap: 0;
+  }
+
+  .cell {
+    position: relative;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .cell::before,
+  .cell::after {
+    content: "";
+    position: absolute;
+    background: rgba(35, 22, 8, 0.55);
+    pointer-events: none;
+  }
+
+  /* grid lines drawn through cell center */
+  .cell::before {
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    transform: translateY(-0.5px);
+  }
+  .cell::after {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    transform: translateX(-0.5px);
+  }
+
+  .cell.edge-left::before { left: 50%; }
+  .cell.edge-right::before { right: 50%; }
+  .cell.edge-top::after { top: 50%; }
+  .cell.edge-bottom::after { bottom: 50%; }
+
+  .cell:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: -2px;
+    z-index: 3;
+  }
+
+  .stone {
+    position: absolute;
+    top: 8%;
+    left: 8%;
+    right: 8%;
+    bottom: 8%;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .stone.black {
+    background: radial-gradient(circle at 35% 30%, var(--black-stone-a), var(--black-stone-b));
+    box-shadow: 0 2px 3px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.4);
+  }
+
+  .stone.white {
+    background: radial-gradient(circle at 35% 30%, var(--white-stone-a), var(--white-stone-b));
+    box-shadow: 0 2px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(150,140,120,0.5);
+  }
+
+  .cell.last-move .stone::after {
+    content: "";
+    position: absolute;
+    inset: 30%;
+    border-radius: 50%;
+    background: var(--coral);
+    box-shadow: 0 0 4px rgba(255,111,89,0.8);
+  }
+
+  .cell.win-cell .stone {
+    box-shadow: 0 0 0 3px var(--coral), 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  .cell:hover .stone-preview {
+    opacity: 0.35;
+  }
+
+  .stone-preview {
+    position: absolute;
+    top: 8%;
+    left: 8%;
+    right: 8%;
+    bottom: 8%;
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity 0.1s ease;
+  }
+
+  .stone-preview.black { background: rgba(6,6,6,0.6); }
+  .stone-preview.white { background: rgba(255,255,255,0.7); }
+
+  .panel {
+    flex: 0 1 var(--panel-max);
+    max-width: var(--panel-max);
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .status-card {
+    background: var(--paper-deep);
+    border: 1px solid var(--wood-dark);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .turn-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #fff;
+    background: var(--teal-dark);
+  }
+
+  .turn-badge.white-turn {
+    background: #6b6357;
+  }
+
+  .status-line {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+
+  .status-line.won { color: var(--coral); font-weight: 700; }
+  .status-line.draw { color: var(--teal); font-weight: 700; }
+
+  .info-list {
+    background: var(--paper-deep);
+    border: 1px solid var(--wood-dark);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .info-list > div {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+  }
+
+  .info-list dt { color: var(--teal); margin: 0; }
+  .info-list dd { margin: 0; font-weight: 600; }
+
+  .panel h2 {
+    font-size: 0.9rem;
+    margin: 0 0 4px;
+    color: var(--teal-dark);
+  }
+
+  .history {
+    list-style: decimal;
+    margin: 0;
+    padding-left: 20px;
+    font-size: 0.82rem;
+    background: var(--paper-deep);
+    border: 1px solid var(--wood-dark);
+    border-radius: 10px;
+    padding: 10px 10px 10px 26px;
+    min-height: 40px;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .actions button {
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid var(--wood-dark);
+    background: var(--teal);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .actions button:disabled {
+    background: #a9a49a;
+    border-color: #a9a49a;
+    cursor: not-allowed;
+  }
+
+  .actions button:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 720px) {
+    .layout {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .board-wrap {
+      flex: none;
+    }
+    .panel {
+      max-width: none;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .board-outer {
+      grid-template-columns: 14px 1fr;
+      grid-template-rows: 14px 1fr;
+    }
+    .col-labels, .row-labels {
+      font-size: 0.55rem;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>한 수 쉬어 가는 오목</h1>
+    <p class="subtitle">자유 오목 · 2인용 · 5개 이상 연결 · 금수 없음</p>
+  </header>
+
+  <main class="layout">
+    <section class="board-wrap">
+      <div class="board-outer">
+        <div class="corner"></div>
+        <div class="col-labels" id="colLabels" aria-hidden="true"></div>
+        <div class="row-labels" id="rowLabels" aria-hidden="true"></div>
+        <div id="board" class="board" role="grid" aria-label="오목판, 15줄 15칸"></div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="status-card">
+        <div class="turn-badge" id="turnBadge">흑돌 차례</div>
+        <div class="status-line" id="statusLine" aria-live="polite">진행중</div>
+      </div>
+
+      <dl class="info-list">
+        <div><dt>수 번호</dt><dd id="moveCount">0</dd></div>
+        <div><dt>마지막 좌표</dt><dd id="lastCoord">-</dd></div>
+      </dl>
+
+      <div>
+        <h2>최근 기록</h2>
+        <ol id="history" class="history" aria-live="polite"></ol>
+      </div>
+
+      <div class="actions">
+        <button id="undoBtn" type="button" disabled>한 수 무르기</button>
+        <button id="newGameBtn" type="button">새 게임</button>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script>
+/**
+ * Gomoku (오목) pure game engine.
+ * No DOM/UI dependencies. Freestyle rules: no forbidden moves,
+ * win = 5 OR MORE contiguous stones (horizontal/vertical/either diagonal).
+ *
+ * State shape:
+ * {
+ *   board: number[15][15]   // 0 empty, 1 black, 2 white
+ *   turn: 1 | 2             // player to move next
+ *   moves: { row, col, player }[]
+ *   status: 'playing' | 'won' | 'draw'
+ *   winner: 0 | 1 | 2
+ *   winningCells: { row, col }[]
+ * }
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.GomokuEngine = factory();
+  }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var BOARD_SIZE = 15;
+  var WIN_LENGTH = 5;
+
+  function createBoard() {
+    var board = new Array(BOARD_SIZE);
+    for (var r = 0; r < BOARD_SIZE; r++) {
+      board[r] = new Array(BOARD_SIZE).fill(0);
+    }
+    return board;
+  }
+
+  function createState() {
+    return {
+      board: createBoard(),
+      turn: 1,
+      moves: [],
+      status: 'playing',
+      winner: 0,
+      winningCells: []
+    };
+  }
+
+  function isValidCoord(row, col) {
+    return (
+      Number.isInteger(row) &&
+      Number.isInteger(col) &&
+      row >= 0 &&
+      row < BOARD_SIZE &&
+      col >= 0 &&
+      col < BOARD_SIZE
+    );
+  }
+
+  function isBoardFull(board) {
+    for (var r = 0; r < BOARD_SIZE; r++) {
+      for (var c = 0; c < BOARD_SIZE; c++) {
+        if (board[r][c] === 0) return false;
+      }
+    }
+    return true;
+  }
+
+  var DIRECTIONS = [
+    { dr: 0, dc: 1 },  // horizontal
+    { dr: 1, dc: 0 },  // vertical
+    { dr: 1, dc: 1 },  // diagonal \
+    { dr: 1, dc: -1 }  // diagonal /
+  ];
+
+  function findWinningCells(board, row, col, player) {
+    for (var d = 0; d < DIRECTIONS.length; d++) {
+      var dr = DIRECTIONS[d].dr;
+      var dc = DIRECTIONS[d].dc;
+      var cells = [{ row: row, col: col }];
+
+      var r = row + dr;
+      var c = col + dc;
+      while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
+        cells.push({ row: r, col: c });
+        r += dr;
+        c += dc;
+      }
+
+      r = row - dr;
+      c = col - dc;
+      while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
+        cells.push({ row: r, col: c });
+        r -= dr;
+        c -= dc;
+      }
+
+      if (cells.length >= WIN_LENGTH) {
+        return cells;
+      }
+    }
+    return null;
+  }
+
+  function place(state, row, col) {
+    if (!state || state.status !== 'playing') return false;
+    if (!isValidCoord(row, col)) return false;
+    if (state.board[row][col] !== 0) return false;
+
+    var player = state.turn;
+    state.board[row][col] = player;
+    state.moves.push({ row: row, col: col, player: player });
+
+    var winningCells = findWinningCells(state.board, row, col, player);
+    if (winningCells) {
+      state.status = 'won';
+      state.winner = player;
+      state.winningCells = winningCells;
+      return true;
+    }
+
+    if (isBoardFull(state.board)) {
+      state.status = 'draw';
+      state.winner = 0;
+      state.winningCells = [];
+      return true;
+    }
+
+    state.turn = player === 1 ? 2 : 1;
+    return true;
+  }
+
+  function undo(state) {
+    if (!state || state.moves.length === 0) return false;
+
+    var last = state.moves.pop();
+    state.board[last.row][last.col] = 0;
+    state.turn = last.player;
+    state.status = 'playing';
+    state.winner = 0;
+    state.winningCells = [];
+    return true;
+  }
+
+  function reset(state) {
+    var fresh = createState();
+    state.board = fresh.board;
+    state.turn = fresh.turn;
+    state.moves = fresh.moves;
+    state.status = fresh.status;
+    state.winner = fresh.winner;
+    state.winningCells = fresh.winningCells;
+    return state;
+  }
+
+  return {
+    BOARD_SIZE: BOARD_SIZE,
+    WIN_LENGTH: WIN_LENGTH,
+    createState: createState,
+    place: place,
+    undo: undo,
+    reset: reset
+  };
+});
+
+</script>
+<script>
+(function () {
+  'use strict';
+
+  var Engine = (typeof module === 'object' && module.exports)
+    ? require('./engine.js')
+    : window.GomokuEngine;
+
+  var SIZE = Engine.BOARD_SIZE;
+  var COL_LETTERS = 'ABCDEFGHIJKLMNO'.split('');
+
+  var state = Engine.createState();
+  var focusedRow = 0;
+  var focusedCol = 0;
+
+  var boardEl = document.getElementById('board');
+  var colLabelsEl = document.getElementById('colLabels');
+  var rowLabelsEl = document.getElementById('rowLabels');
+  var turnBadgeEl = document.getElementById('turnBadge');
+  var statusLineEl = document.getElementById('statusLine');
+  var moveCountEl = document.getElementById('moveCount');
+  var lastCoordEl = document.getElementById('lastCoord');
+  var historyEl = document.getElementById('history');
+  var undoBtn = document.getElementById('undoBtn');
+  var newGameBtn = document.getElementById('newGameBtn');
+
+  var cellButtons = [];
+
+  function coordLabel(row, col) {
+    return COL_LETTERS[col] + (row + 1);
+  }
+
+  function buildLabels() {
+    for (var c = 0; c < SIZE; c++) {
+      var colEl = document.createElement('span');
+      colEl.textContent = COL_LETTERS[c];
+      colLabelsEl.appendChild(colEl);
+    }
+    for (var r = 0; r < SIZE; r++) {
+      var rowEl = document.createElement('span');
+      rowEl.textContent = String(r + 1);
+      rowLabelsEl.appendChild(rowEl);
+    }
+  }
+
+  function buildBoard() {
+    for (var r = 0; r < SIZE; r++) {
+      var rowGroup = document.createElement('div');
+      rowGroup.setAttribute('role', 'row');
+      rowGroup.style.display = 'contents';
+      cellButtons.push([]);
+
+      for (var c = 0; c < SIZE; c++) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cell';
+        btn.setAttribute('role', 'gridcell');
+        btn.dataset.row = String(r);
+        btn.dataset.col = String(c);
+        if (r === 0) btn.classList.add('edge-top');
+        if (r === SIZE - 1) btn.classList.add('edge-bottom');
+        if (c === 0) btn.classList.add('edge-left');
+        if (c === SIZE - 1) btn.classList.add('edge-right');
+        btn.tabIndex = (r === 0 && c === 0) ? 0 : -1;
+
+        var preview = document.createElement('span');
+        preview.className = 'stone-preview';
+        btn.appendChild(preview);
+
+        btn.addEventListener('click', handleCellActivate);
+        btn.addEventListener('keydown', handleCellKeydown);
+        btn.addEventListener('focus', handleCellFocus);
+        btn.addEventListener('mouseenter', handleCellHoverEnter);
+        btn.addEventListener('mouseleave', handleCellHoverLeave);
+
+        rowGroup.appendChild(btn);
+        cellButtons[r].push(btn);
+      }
+      boardEl.appendChild(rowGroup);
+    }
+  }
+
+  function handleCellHoverEnter(event) {
+    var btn = event.currentTarget;
+    var r = Number(btn.dataset.row);
+    var c = Number(btn.dataset.col);
+    if (state.status !== 'playing' || state.board[r][c] !== 0) return;
+    var preview = btn.querySelector('.stone-preview');
+    preview.classList.remove('black', 'white');
+    preview.classList.add(state.turn === 1 ? 'black' : 'white');
+  }
+
+  function handleCellHoverLeave(event) {
+    var preview = event.currentTarget.querySelector('.stone-preview');
+    preview.classList.remove('black', 'white');
+  }
+
+  function handleCellFocus(event) {
+    var btn = event.currentTarget;
+    var row = Number(btn.dataset.row);
+    var col = Number(btn.dataset.col);
+    for (var r = 0; r < SIZE; r++) {
+      for (var c = 0; c < SIZE; c++) {
+        cellButtons[r][c].tabIndex = (r === row && c === col) ? 0 : -1;
+      }
+    }
+    focusedRow = row;
+    focusedCol = col;
+  }
+
+  function setRovingFocus(row, col) {
+    var prev = cellButtons[focusedRow][focusedCol];
+    if (prev) prev.tabIndex = -1;
+    focusedRow = row;
+    focusedCol = col;
+    var next = cellButtons[row][col];
+    next.tabIndex = 0;
+    next.focus();
+  }
+
+  function handleCellKeydown(event) {
+    var row = Number(event.currentTarget.dataset.row);
+    var col = Number(event.currentTarget.dataset.col);
+    var handled = true;
+
+    switch (event.key) {
+      case 'ArrowUp':
+        if (row > 0) setRovingFocus(row - 1, col);
+        break;
+      case 'ArrowDown':
+        if (row < SIZE - 1) setRovingFocus(row + 1, col);
+        break;
+      case 'ArrowLeft':
+        if (col > 0) setRovingFocus(row, col - 1);
+        break;
+      case 'ArrowRight':
+        if (col < SIZE - 1) setRovingFocus(row, col + 1);
+        break;
+      case 'Home':
+        setRovingFocus(row, 0);
+        break;
+      case 'End':
+        setRovingFocus(row, SIZE - 1);
+        break;
+      case 'Enter':
+      case ' ':
+      case 'Spacebar':
+        attemptPlace(row, col);
+        break;
+      default:
+        handled = false;
+    }
+
+    if (handled) event.preventDefault();
+  }
+
+  function handleCellActivate(event) {
+    var row = Number(event.currentTarget.dataset.row);
+    var col = Number(event.currentTarget.dataset.col);
+    setRovingFocus(row, col);
+    attemptPlace(row, col);
+  }
+
+  function attemptPlace(row, col) {
+    var placed = Engine.place(state, row, col);
+    if (placed) render();
+  }
+
+  function updateAriaLabel(btn, row, col) {
+    var value = state.board[row][col];
+    var occ = value === 1 ? '흑돌' : value === 2 ? '백돌' : '빈칸';
+    btn.setAttribute('aria-label', coordLabel(row, col) + ' ' + occ);
+  }
+
+  function render() {
+    var isLast = state.moves.length > 0 ? state.moves[state.moves.length - 1] : null;
+    var winSet = {};
+    state.winningCells.forEach(function (cell) {
+      winSet[cell.row + ',' + cell.col] = true;
+    });
+
+    for (var r = 0; r < SIZE; r++) {
+      for (var c = 0; c < SIZE; c++) {
+        var btn = cellButtons[r][c];
+        var value = state.board[r][c];
+
+        var existingStone = btn.querySelector('.stone');
+        if (existingStone) existingStone.remove();
+
+        var preview = btn.querySelector('.stone-preview');
+        if (preview) preview.classList.remove('black', 'white');
+
+        if (value !== 0) {
+          var stone = document.createElement('span');
+          stone.className = 'stone ' + (value === 1 ? 'black' : 'white');
+          btn.appendChild(stone);
+        }
+
+        btn.classList.toggle('last-move', !!(isLast && isLast.row === r && isLast.col === c));
+        btn.classList.toggle('win-cell', !!winSet[r + ',' + c]);
+
+        updateAriaLabel(btn, r, c);
+      }
+    }
+
+    if (state.status === 'playing') {
+      turnBadgeEl.textContent = state.turn === 1 ? '흑돌 차례' : '백돌 차례';
+    } else {
+      turnBadgeEl.textContent = '대국 종료';
+    }
+    turnBadgeEl.classList.toggle('white-turn', state.status === 'playing' && state.turn === 2);
+
+    statusLineEl.classList.remove('won', 'draw');
+    if (state.status === 'won') {
+      var winnerName = state.winner === 1 ? '흑돌' : '백돌';
+      statusLineEl.textContent = winnerName + ' 승리!';
+      statusLineEl.classList.add('won');
+    } else if (state.status === 'draw') {
+      statusLineEl.textContent = '무승부 (보드가 가득 찼습니다)';
+      statusLineEl.classList.add('draw');
+    } else {
+      statusLineEl.textContent = '진행중';
+    }
+
+    moveCountEl.textContent = String(state.moves.length);
+
+    if (state.moves.length > 0) {
+      var last = state.moves[state.moves.length - 1];
+      lastCoordEl.textContent = coordLabel(last.row, last.col);
+    } else {
+      lastCoordEl.textContent = '-';
+    }
+
+    renderHistory();
+
+    undoBtn.disabled = state.moves.length === 0;
+  }
+
+  function renderHistory() {
+    historyEl.innerHTML = '';
+    var moves = state.moves;
+    var start = Math.max(0, moves.length - 6);
+    historyEl.setAttribute('start', String(start + 1));
+    for (var i = start; i < moves.length; i++) {
+      var move = moves[i];
+      var li = document.createElement('li');
+      var playerName = move.player === 1 ? '흑' : '백';
+      li.textContent = playerName + ' ' + coordLabel(move.row, move.col);
+      historyEl.appendChild(li);
+    }
+  }
+
+  undoBtn.addEventListener('click', function () {
+    var undone = Engine.undo(state);
+    if (undone) render();
+  });
+
+  newGameBtn.addEventListener('click', function () {
+    if (state.moves.length > 0) {
+      var confirmed = window.confirm('진행 중인 대국을 종료하고 새 게임을 시작할까요?');
+      if (!confirmed) return;
+    }
+    Engine.reset(state);
+    setRovingFocus(0, 0);
+    render();
+  });
+
+  buildLabels();
+  buildBoard();
+  render();
+})();
+
+</script>
+</body>
+</html>

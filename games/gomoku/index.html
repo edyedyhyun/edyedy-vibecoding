@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>한 수 쉬어 가는 오목</title>
+<style>
+  :root {
+    --paper: #f4ecdd;
+    --paper-deep: #ece0c9;
+    --teal: #0f4c4c;
+    --teal-dark: #0a3838;
+    --wood-light: #c98a4e;
+    --wood-dark: #9c6431;
+    --ink: #2c2521;
+    --coral: #ff6f59;
+    --black-stone-a: #4a4a4a;
+    --black-stone-b: #060606;
+    --white-stone-a: #ffffff;
+    --white-stone-b: #d9d2c4;
+    --panel-max: 250px;
+    --board-max: 540px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    touch-action: manipulation;
+  }
+
+  .app {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  header h1 {
+    margin: 0 0 6px;
+    font-size: clamp(1.3rem, 3vw, 1.9rem);
+    color: var(--teal-dark);
+  }
+
+  .subtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--teal);
+    letter-spacing: 0.02em;
+  }
+
+  .layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .board-wrap {
+    flex: 1 1 var(--board-max);
+    max-width: var(--board-max);
+    display: flex;
+    justify-content: center;
+  }
+
+  .board-outer {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    grid-template-rows: 20px 1fr;
+    gap: 2px;
+  }
+
+  .corner { }
+
+  .col-labels {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    align-items: center;
+    justify-items: center;
+    font-size: 0.7rem;
+    color: var(--teal-dark);
+    padding-inline: 10px;
+  }
+
+  .row-labels {
+    display: grid;
+    grid-auto-flow: row;
+    grid-auto-rows: 1fr;
+    align-items: center;
+    justify-items: center;
+    font-size: 0.7rem;
+    color: var(--teal-dark);
+    padding-block: 10px;
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(15, 1fr);
+    grid-template-rows: repeat(15, 1fr);
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(255,255,255,0.15), transparent 60%),
+      linear-gradient(135deg, var(--wood-light), var(--wood-dark));
+    border: 4px solid var(--wood-dark);
+    border-radius: 6px;
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.35), 0 6px 14px rgba(0,0,0,0.25);
+    padding: 6px;
+    gap: 0;
+  }
+
+  .cell {
+    position: relative;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .cell::before,
+  .cell::after {
+    content: "";
+    position: absolute;
+    background: rgba(35, 22, 8, 0.55);
+    pointer-events: none;
+  }
+
+  /* grid lines drawn through cell center */
+  .cell::before {
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    transform: translateY(-0.5px);
+  }
+  .cell::after {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    transform: translateX(-0.5px);
+  }
+
+  .cell.edge-left::before { left: 50%; }
+  .cell.edge-right::before { right: 50%; }
+  .cell.edge-top::after { top: 50%; }
+  .cell.edge-bottom::after { bottom: 50%; }
+
+  .cell:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: -2px;
+    z-index: 3;
+  }
+
+  .stone {
+    position: absolute;
+    top: 8%;
+    left: 8%;
+    right: 8%;
+    bottom: 8%;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .stone.black {
+    background: radial-gradient(circle at 35% 30%, var(--black-stone-a), var(--black-stone-b));
+    box-shadow: 0 2px 3px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.4);
+  }
+
+  .stone.white {
+    background: radial-gradient(circle at 35% 30%, var(--white-stone-a), var(--white-stone-b));
+    box-shadow: 0 2px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(150,140,120,0.5);
+  }
+
+  .cell.last-move .stone::after {
+    content: "";
+    position: absolute;
+    inset: 30%;
+    border-radius: 50%;
+    background: var(--coral);
+    box-shadow: 0 0 4px rgba(255,111,89,0.8);
+  }
+
+  .cell.win-cell .stone {
+    box-shadow: 0 0 0 3px var(--coral), 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  .cell:hover .stone-preview {
+    opacity: 0.35;
+  }
+
+  .stone-preview {
+    position: absolute;
+    top: 8%;
+    left: 8%;
+    right: 8%;
+    bottom: 8%;
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity 0.1s ease;
+  }
+
+  .stone-preview.black { background: rgba(6,6,6,0.6); }
+  .stone-preview.white { background: rgba(255,255,255,0.7); }
+
+  .panel {
+    flex: 0 1 var(--panel-max);
+    max-width: var(--panel-max);
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .status-card {
+    background: var(--paper-deep);
+    border: 1px solid var(--wood-dark);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .turn-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #fff;
+    background: var(--teal-dark);
+  }
+
+  .turn-badge.white-turn {
+    background: #6b6357;
+  }
+
+  .status-line {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+
+  .status-line.won { color: var(--coral); font-weight: 700; }
+  .status-line.draw { color: var(--teal); font-weight: 700; }
+
+  .info-list {
+    background: var(--paper-deep);
+    border: 1px solid var(--wood-dark);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .info-list > div {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+  }
+
+  .info-list dt { color: var(--teal); margin: 0; }
+  .info-list dd { margin: 0; font-weight: 600; }
+
+  .panel h2 {
+    font-size: 0.9rem;
+    margin: 0 0 4px;
+    color: var(--teal-dark);
+  }
+
+  .history {
+    list-style: decimal;
+    margin: 0;
+    padding-left: 20px;
+    font-size: 0.82rem;
+    background: var(--paper-deep);
+    border: 1px solid var(--wood-dark);
+    border-radius: 10px;
+    padding: 10px 10px 10px 26px;
+    min-height: 40px;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .actions button {
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid var(--wood-dark);
+    background: var(--teal);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .actions button:disabled {
+    background: #a9a49a;
+    border-color: #a9a49a;
+    cursor: not-allowed;
+  }
+
+  .actions button:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 720px) {
+    .layout {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .board-wrap {
+      flex: none;
+    }
+    .panel {
+      max-width: none;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .board-outer {
+      grid-template-columns: 14px 1fr;
+      grid-template-rows: 14px 1fr;
+    }
+    .col-labels, .row-labels {
+      font-size: 0.55rem;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>한 수 쉬어 가는 오목</h1>
+    <p class="subtitle">자유 오목 · 2인용 · 5개 이상 연결 · 금수 없음</p>
+  </header>
+
+  <main class="layout">
+    <section class="board-wrap">
+      <div class="board-outer">
+        <div class="corner"></div>
+        <div class="col-labels" id="colLabels" aria-hidden="true"></div>
+        <div class="row-labels" id="rowLabels" aria-hidden="true"></div>
+        <div id="board" class="board" role="grid" aria-label="오목판, 15줄 15칸"></div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="status-card">
+        <div class="turn-badge" id="turnBadge">흑돌 차례</div>
+        <div class="status-line" id="statusLine" aria-live="polite">진행중</div>
+      </div>
+
+      <dl class="info-list">
+        <div><dt>수 번호</dt><dd id="moveCount">0</dd></div>
+        <div><dt>마지막 좌표</dt><dd id="lastCoord">-</dd></div>
+      </dl>
+
+      <div>
+        <h2>최근 기록</h2>
+        <ol id="history" class="history" aria-live="polite"></ol>
+      </div>
+
+      <div class="actions">
+        <button id="undoBtn" type="button" disabled>한 수 무르기</button>
+        <button id="newGameBtn" type="button">새 게임</button>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
