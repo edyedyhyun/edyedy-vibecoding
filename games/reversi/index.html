@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>뒤집는 한 수 — 오델로 · 로컬 2인용</title>
+<style>
+  :root {
+    --cream: #f6f1e4;
+    --paper: #efe7d6;
+    --forest: #14532d;
+    --forest-dark: #0d3b1f;
+    --ivory: #faf7ef;
+    --charcoal: #262321;
+    --teal: #14807a;
+    --coral: #e0603f;
+    --line: rgba(20, 83, 45, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--cream);
+    color: var(--charcoal);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 12px 40px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 1.7rem;
+    letter-spacing: 0.02em;
+    color: var(--forest-dark);
+  }
+
+  .subtitle {
+    margin: 4px 0 0;
+    font-size: 0.95rem;
+    color: var(--teal);
+    font-weight: 600;
+  }
+
+  main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    max-width: 780px;
+  }
+
+  .board-wrap {
+    display: grid;
+    grid-template-columns: 20px 480px;
+    grid-template-rows: 20px 480px;
+    max-width: 100%;
+  }
+
+  .corner { }
+
+  .col-labels, .row-labels {
+    display: flex;
+    color: var(--forest-dark);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .col-labels {
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  .row-labels {
+    grid-column: 1;
+    grid-row: 2;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  #board {
+    grid-column: 2;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 480px;
+    height: 480px;
+    max-width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--forest);
+    border: 4px solid var(--forest-dark);
+    border-radius: 6px;
+    padding: 4px;
+    gap: 2px;
+  }
+
+  .cell {
+    background: var(--forest);
+    border: none;
+    border-radius: 3px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    outline-offset: -2px;
+  }
+
+  .cell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(250,247,239,0.24);
+    border-radius: 3px;
+    pointer-events: none;
+  }
+
+  .cell:focus-visible {
+    outline: 3px solid var(--coral);
+  }
+
+  .disk {
+    width: 78%;
+    height: 78%;
+    border-radius: 50%;
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.35);
+  }
+
+  .disk.black {
+    background: var(--charcoal);
+  }
+
+  .disk.white {
+    background: var(--ivory);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+  }
+
+  .disk.flipped {
+    animation: flip-anim 380ms ease;
+  }
+
+  @keyframes flip-anim {
+    0% { transform: scale(1) rotateY(0deg); }
+    50% { transform: scale(0.7) rotateY(90deg); }
+    100% { transform: scale(1) rotateY(0deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .disk.flipped {
+      animation: none;
+    }
+  }
+
+  .cell.last-move {
+    box-shadow: inset 0 0 0 3px var(--coral);
+  }
+
+  .hint-dot {
+    width: 22%;
+    height: 22%;
+    border-radius: 50%;
+    background: #a8dcc5;
+    opacity: 0.85;
+  }
+
+  .side-panel {
+    width: 250px;
+    max-width: 100%;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .status-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.9rem;
+  }
+
+  .turn-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+  }
+
+  .turn-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  .turn-swatch.black { background: var(--charcoal); }
+  .turn-swatch.white { background: var(--ivory); border: 1px solid rgba(0,0,0,0.2); }
+
+  .counts-line {
+    display: flex;
+    gap: 14px;
+  }
+
+  .count-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .notice {
+    min-height: 40px;
+    font-size: 0.85rem;
+    color: var(--forest-dark);
+    background: rgba(20, 128, 122, 0.12);
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
+
+  .notice:empty {
+    padding: 0;
+    min-height: 0;
+    background: none;
+  }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  button.action {
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--forest-dark);
+    background: var(--ivory);
+    color: var(--forest-dark);
+    cursor: pointer;
+  }
+
+  button.action:hover:not(:disabled) {
+    background: var(--forest);
+    color: var(--ivory);
+  }
+
+  button.action:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .toggle-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+  }
+
+  .rules {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: #4a463f;
+    border-top: 1px dashed var(--line);
+    padding-top: 8px;
+  }
+
+  .move-count {
+    font-size: 0.8rem;
+    color: #555;
+  }
+
+  /* 새 게임 확인 다이얼로그 (커스텀, 네이티브 confirm 미사용) */
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 20, 20, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  .dialog-overlay[hidden] {
+    display: none;
+  }
+
+  .dialog-box {
+    background: var(--ivory);
+    border-radius: 8px;
+    padding: 20px;
+    width: 280px;
+    max-width: 90vw;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+
+  .dialog-box p {
+    margin: 0 0 16px;
+    font-size: 0.9rem;
+    color: var(--charcoal);
+  }
+
+  .dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 500px) {
+    .board-wrap {
+      grid-template-columns: 16px 1fr;
+      grid-template-rows: 16px 1fr;
+      width: 100%;
+    }
+
+    #board {
+      width: 100%;
+      height: auto;
+      padding: 3px;
+      gap: 1px;
+    }
+
+    main {
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .side-panel {
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 1.3rem;
+    }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>뒤집는 한 수</h1>
+    <p class="subtitle">오델로 · 로컬 2인용</p>
+  </header>
+
+  <main>
+    <div class="board-wrap">
+      <div class="corner"></div>
+      <div class="col-labels" id="col-labels" aria-hidden="true"></div>
+      <div class="row-labels" id="row-labels" aria-hidden="true"></div>
+      <div id="board" role="grid" aria-label="오델로 8x8 보드"></div>
+    </div>
+
+    <section class="side-panel" aria-label="게임 정보 및 조작">
+      <div class="status-block">
+        <div class="turn-line">
+          <span class="turn-swatch" id="turn-swatch"></span>
+          <span id="turn-text">흑 차례</span>
+        </div>
+        <div class="counts-line">
+          <span class="count-item">⚫ 흑 <span id="count-black">2</span></span>
+          <span class="count-item">⚪ 백 <span id="count-white">2</span></span>
+          <span class="count-item">· 빈칸 <span id="count-empty">60</span></span>
+        </div>
+        <div class="move-count">수 번호: <span id="move-number">0</span></div>
+        <div class="notice" id="notice" role="status" aria-live="polite"></div>
+      </div>
+
+      <div class="controls">
+        <div class="toggle-line">
+          <input type="checkbox" id="hint-toggle" checked>
+          <label for="hint-toggle">둘 수 있는 자리 표시</label>
+        </div>
+        <button class="action" id="undo-btn" type="button" disabled>한 수 무르기</button>
+        <button class="action" id="new-game-btn" type="button">새 게임</button>
+      </div>
+
+      <p class="rules">
+        상대 돌을 사이에 끼우면 뒤집습니다. 놓을 곳이 없으면 자동으로 차례를 넘깁니다.
+        양쪽 모두 둘 곳이 없으면 게임이 끝나며, 돌이 많은 쪽이 승리합니다.
+      </p>
+    </section>
+  </main>
+
+  <div class="dialog-overlay" id="dialog-overlay" hidden>
+    <div class="dialog-box" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title">
+      <p id="dialog-title">진행 중인 게임이 있습니다. 새 게임을 시작할까요?</p>
+      <div class="dialog-buttons">
+        <button class="action" id="dialog-cancel" type="button">취소</button>
+        <button class="action" id="dialog-confirm" type="button">새 게임 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <span class="visually-hidden" id="live-region" aria-live="polite"></span>
+
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

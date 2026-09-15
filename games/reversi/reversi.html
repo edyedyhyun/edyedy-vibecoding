@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>뒤집는 한 수 — 오델로 · 로컬 2인용</title>
+<style>
+  :root {
+    --cream: #f6f1e4;
+    --paper: #efe7d6;
+    --forest: #14532d;
+    --forest-dark: #0d3b1f;
+    --ivory: #faf7ef;
+    --charcoal: #262321;
+    --teal: #14807a;
+    --coral: #e0603f;
+    --line: rgba(20, 83, 45, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--cream);
+    color: var(--charcoal);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 12px 40px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 1.7rem;
+    letter-spacing: 0.02em;
+    color: var(--forest-dark);
+  }
+
+  .subtitle {
+    margin: 4px 0 0;
+    font-size: 0.95rem;
+    color: var(--teal);
+    font-weight: 600;
+  }
+
+  main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    max-width: 780px;
+  }
+
+  .board-wrap {
+    display: grid;
+    grid-template-columns: 20px 480px;
+    grid-template-rows: 20px 480px;
+    max-width: 100%;
+  }
+
+  .corner { }
+
+  .col-labels, .row-labels {
+    display: flex;
+    color: var(--forest-dark);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .col-labels {
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  .row-labels {
+    grid-column: 1;
+    grid-row: 2;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  #board {
+    grid-column: 2;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 480px;
+    height: 480px;
+    max-width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--forest);
+    border: 4px solid var(--forest-dark);
+    border-radius: 6px;
+    padding: 4px;
+    gap: 2px;
+  }
+
+  .cell {
+    background: var(--forest);
+    border: none;
+    border-radius: 3px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    outline-offset: -2px;
+  }
+
+  .cell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(250,247,239,0.24);
+    border-radius: 3px;
+    pointer-events: none;
+  }
+
+  .cell:focus-visible {
+    outline: 3px solid var(--coral);
+  }
+
+  .disk {
+    width: 78%;
+    height: 78%;
+    border-radius: 50%;
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.35);
+  }
+
+  .disk.black {
+    background: var(--charcoal);
+  }
+
+  .disk.white {
+    background: var(--ivory);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+  }
+
+  .disk.flipped {
+    animation: flip-anim 380ms ease;
+  }
+
+  @keyframes flip-anim {
+    0% { transform: scale(1) rotateY(0deg); }
+    50% { transform: scale(0.7) rotateY(90deg); }
+    100% { transform: scale(1) rotateY(0deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .disk.flipped {
+      animation: none;
+    }
+  }
+
+  .cell.last-move {
+    box-shadow: inset 0 0 0 3px var(--coral);
+  }
+
+  .hint-dot {
+    width: 22%;
+    height: 22%;
+    border-radius: 50%;
+    background: #a8dcc5;
+    opacity: 0.85;
+  }
+
+  .side-panel {
+    width: 250px;
+    max-width: 100%;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .status-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.9rem;
+  }
+
+  .turn-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+  }
+
+  .turn-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  .turn-swatch.black { background: var(--charcoal); }
+  .turn-swatch.white { background: var(--ivory); border: 1px solid rgba(0,0,0,0.2); }
+
+  .counts-line {
+    display: flex;
+    gap: 14px;
+  }
+
+  .count-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .notice {
+    min-height: 40px;
+    font-size: 0.85rem;
+    color: var(--forest-dark);
+    background: rgba(20, 128, 122, 0.12);
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
+
+  .notice:empty {
+    padding: 0;
+    min-height: 0;
+    background: none;
+  }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  button.action {
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--forest-dark);
+    background: var(--ivory);
+    color: var(--forest-dark);
+    cursor: pointer;
+  }
+
+  button.action:hover:not(:disabled) {
+    background: var(--forest);
+    color: var(--ivory);
+  }
+
+  button.action:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .toggle-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+  }
+
+  .rules {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: #4a463f;
+    border-top: 1px dashed var(--line);
+    padding-top: 8px;
+  }
+
+  .move-count {
+    font-size: 0.8rem;
+    color: #555;
+  }
+
+  /* 새 게임 확인 다이얼로그 (커스텀, 네이티브 confirm 미사용) */
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 20, 20, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  .dialog-overlay[hidden] {
+    display: none;
+  }
+
+  .dialog-box {
+    background: var(--ivory);
+    border-radius: 8px;
+    padding: 20px;
+    width: 280px;
+    max-width: 90vw;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+
+  .dialog-box p {
+    margin: 0 0 16px;
+    font-size: 0.9rem;
+    color: var(--charcoal);
+  }
+
+  .dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 500px) {
+    .board-wrap {
+      grid-template-columns: 16px 1fr;
+      grid-template-rows: 16px 1fr;
+      width: 100%;
+    }
+
+    #board {
+      width: 100%;
+      height: auto;
+      padding: 3px;
+      gap: 1px;
+    }
+
+    main {
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .side-panel {
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 1.3rem;
+    }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>뒤집는 한 수</h1>
+    <p class="subtitle">오델로 · 로컬 2인용</p>
+  </header>
+
+  <main>
+    <div class="board-wrap">
+      <div class="corner"></div>
+      <div class="col-labels" id="col-labels" aria-hidden="true"></div>
+      <div class="row-labels" id="row-labels" aria-hidden="true"></div>
+      <div id="board" role="grid" aria-label="오델로 8x8 보드"></div>
+    </div>
+
+    <section class="side-panel" aria-label="게임 정보 및 조작">
+      <div class="status-block">
+        <div class="turn-line">
+          <span class="turn-swatch" id="turn-swatch"></span>
+          <span id="turn-text">흑 차례</span>
+        </div>
+        <div class="counts-line">
+          <span class="count-item">⚫ 흑 <span id="count-black">2</span></span>
+          <span class="count-item">⚪ 백 <span id="count-white">2</span></span>
+          <span class="count-item">· 빈칸 <span id="count-empty">60</span></span>
+        </div>
+        <div class="move-count">수 번호: <span id="move-number">0</span></div>
+        <div class="notice" id="notice" role="status" aria-live="polite"></div>
+      </div>
+
+      <div class="controls">
+        <div class="toggle-line">
+          <input type="checkbox" id="hint-toggle" checked>
+          <label for="hint-toggle">둘 수 있는 자리 표시</label>
+        </div>
+        <button class="action" id="undo-btn" type="button" disabled>한 수 무르기</button>
+        <button class="action" id="new-game-btn" type="button">새 게임</button>
+      </div>
+
+      <p class="rules">
+        상대 돌을 사이에 끼우면 뒤집습니다. 놓을 곳이 없으면 자동으로 차례를 넘깁니다.
+        양쪽 모두 둘 곳이 없으면 게임이 끝나며, 돌이 많은 쪽이 승리합니다.
+      </p>
+    </section>
+  </main>
+
+  <div class="dialog-overlay" id="dialog-overlay" hidden>
+    <div class="dialog-box" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title">
+      <p id="dialog-title">진행 중인 게임이 있습니다. 새 게임을 시작할까요?</p>
+      <div class="dialog-buttons">
+        <button class="action" id="dialog-cancel" type="button">취소</button>
+        <button class="action" id="dialog-confirm" type="button">새 게임 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <span class="visually-hidden" id="live-region" aria-live="polite"></span>
+
+  <script>
+// engine.js — 뒤집는 한 수 (Reversi/Othello) 순수 게임 엔진
+// CommonJS + 브라우저(window.ReversiEngine) 겸용, 외부 의존성 없음.
+
+(function (root, factory) {
+  var mod = factory();
+  if (typeof module === 'object' && module.exports) {
+    module.exports = mod;
+  }
+  if (root) {
+    root.ReversiEngine = mod;
+  }
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : null), function () {
+  'use strict';
+
+  var SIZE = 8;
+  var EMPTY = 0;
+  var BLACK = 1;
+  var WHITE = 2;
+
+  var DIRECTIONS = [
+    [-1, -1], [-1, 0], [-1, 1],
+    [0, -1], [0, 1],
+    [1, -1], [1, 0], [1, 1]
+  ];
+
+  function isInBounds(row, col) {
+    return Number.isInteger(row) && Number.isInteger(col) &&
+      row >= 0 && row < SIZE && col >= 0 && col < SIZE;
+  }
+
+  function isValidPlayer(player) {
+    return player === BLACK || player === WHITE;
+  }
+
+  function opponent(player) {
+    return player === BLACK ? WHITE : BLACK;
+  }
+
+  function cloneBoard(board) {
+    return board.map(function (row) { return row.slice(); });
+  }
+
+  function createEmptyBoard() {
+    var board = [];
+    for (var r = 0; r < SIZE; r++) {
+      board.push(new Array(SIZE).fill(EMPTY));
+    }
+    return board;
+  }
+
+  function createState() {
+    var board = createEmptyBoard();
+    // 초기 배치: 흰돌 D4/E5, 흑돌 E4/D5 (1-indexed 열=D~E, 행=4~5)
+    // 0-indexed: 행3=4, 행4=5, 열3=D, 열4=E
+    board[3][3] = WHITE; // D4
+    board[4][4] = WHITE; // E5
+    board[4][3] = BLACK; // D5
+    board[3][4] = BLACK; // E4
+
+    return {
+      board: board,
+      turn: BLACK,
+      status: 'playing',
+      winner: 0,
+      history: [],
+      lastMove: null,
+      lastFlips: [],
+      notice: '',
+      moveNumber: 0
+    };
+  }
+
+  // 특정 좌표에 player가 놓았을 때 뒤집히는 모든 좌표 목록 반환
+  function getFlips(board, row, col, player) {
+    if (!isInBounds(row, col) || !isValidPlayer(player)) {
+      return [];
+    }
+    if (board[row][col] !== EMPTY) {
+      return [];
+    }
+    var opp = opponent(player);
+    var flips = [];
+
+    for (var d = 0; d < DIRECTIONS.length; d++) {
+      var dr = DIRECTIONS[d][0];
+      var dc = DIRECTIONS[d][1];
+      var r = row + dr;
+      var c = col + dc;
+      var line = [];
+
+      while (isInBounds(r, c) && board[r][c] === opp) {
+        line.push({ row: r, col: c });
+        r += dr;
+        c += dc;
+      }
+
+      if (line.length > 0 && isInBounds(r, c) && board[r][c] === player) {
+        flips = flips.concat(line);
+      }
+    }
+
+    return flips;
+  }
+
+  // player가 둘 수 있는 모든 합법 좌표 목록 ({row, col})
+  function legalMoves(board, player) {
+    if (!isValidPlayer(player)) {
+      return [];
+    }
+    var moves = [];
+    for (var r = 0; r < SIZE; r++) {
+      for (var c = 0; c < SIZE; c++) {
+        if (board[r][c] === EMPTY) {
+          var flips = getFlips(board, r, c, player);
+          if (flips.length > 0) {
+            moves.push({ row: r, col: c });
+          }
+        }
+      }
+    }
+    return moves;
+  }
+
+  function counts(board) {
+    var result = { black: 0, white: 0, empty: 0 };
+    for (var r = 0; r < SIZE; r++) {
+      for (var c = 0; c < SIZE; c++) {
+        var v = board[r][c];
+        if (v === BLACK) result.black++;
+        else if (v === WHITE) result.white++;
+        else result.empty++;
+      }
+    }
+    return result;
+  }
+
+  function playerLabel(player) {
+    return player === BLACK ? '흑' : '백';
+  }
+
+  // 불변 스냅샷 생성 (undo용)
+  function snapshot(state) {
+    return {
+      board: cloneBoard(state.board),
+      turn: state.turn,
+      status: state.status,
+      winner: state.winner,
+      lastMove: state.lastMove ? { row: state.lastMove.row, col: state.lastMove.col } : null,
+      lastFlips: state.lastFlips.map(function (f) { return { row: f.row, col: f.col }; }),
+      notice: state.notice,
+      moveNumber: state.moveNumber
+    };
+  }
+
+  // 두 플레이어 모두 둘 곳이 없는지 확인하고, 필요하면 자동 패스 처리
+  // notice 문자열을 설정하고 status/winner를 갱신한다.
+  function resolveTurn(state) {
+    var currentMoves = legalMoves(state.board, state.turn);
+    if (currentMoves.length > 0) {
+      state.notice = '';
+      return;
+    }
+
+    var other = opponent(state.turn);
+    var otherMoves = legalMoves(state.board, other);
+
+    if (otherMoves.length > 0) {
+      // 자동 패스
+      state.notice = playerLabel(state.turn) + '이(가) 둘 곳이 없어 차례를 넘겼습니다. 다음은 ' +
+        playerLabel(other) + ' 차례입니다.';
+      state.turn = other;
+    } else {
+      // 양쪽 다 둘 곳 없음 -> 게임 종료
+      var final = counts(state.board);
+      state.status = 'over';
+      if (final.black > final.white) {
+        state.winner = BLACK;
+        state.notice = '더 이상 둘 곳이 없습니다. 흑 승리! (흑 ' + final.black + ' : 백 ' + final.white + ')';
+      } else if (final.white > final.black) {
+        state.winner = WHITE;
+        state.notice = '더 이상 둘 곳이 없습니다. 백 승리! (흑 ' + final.black + ' : 백 ' + final.white + ')';
+      } else {
+        state.winner = 0;
+        state.notice = '더 이상 둘 곳이 없습니다. 무승부입니다. (흑 ' + final.black + ' : 백 ' + final.white + ')';
+      }
+    }
+  }
+
+  // row/col에 현재 턴 플레이어가 착수 시도. 성공하면 true.
+  function play(state, row, col) {
+    if (!state || state.status !== 'playing') {
+      return false;
+    }
+    if (!isInBounds(row, col)) {
+      return false;
+    }
+    if (!isValidPlayer(state.turn)) {
+      return false;
+    }
+    var flips = getFlips(state.board, row, col, state.turn);
+    if (flips.length === 0) {
+      return false;
+    }
+
+    // undo를 위한 이전 상태 저장
+    state.history.push(snapshot(state));
+
+    var player = state.turn;
+    state.board[row][col] = player;
+    for (var i = 0; i < flips.length; i++) {
+      state.board[flips[i].row][flips[i].col] = player;
+    }
+
+    state.lastMove = { row: row, col: col };
+    state.lastFlips = flips.map(function (f) { return { row: f.row, col: f.col }; });
+    state.moveNumber += 1;
+    state.turn = opponent(player);
+    state.status = 'playing';
+    state.winner = 0;
+
+    resolveTurn(state);
+
+    return true;
+  }
+
+  // 가장 최근 한 수를 되돌린다. 히스토리가 없으면 false.
+  function undo(state) {
+    if (!state || state.history.length === 0) {
+      return false;
+    }
+    var prev = state.history.pop();
+    state.board = prev.board;
+    state.turn = prev.turn;
+    state.status = prev.status;
+    state.winner = prev.winner;
+    state.lastMove = prev.lastMove;
+    state.lastFlips = prev.lastFlips;
+    state.notice = prev.notice;
+    state.moveNumber = prev.moveNumber;
+    return true;
+  }
+
+  // state를 새 게임으로 초기화 (동일 객체 참조 유지, 필드만 갱신)
+  function reset(state) {
+    var fresh = createState();
+    state.board = fresh.board;
+    state.turn = fresh.turn;
+    state.status = fresh.status;
+    state.winner = fresh.winner;
+    state.history = fresh.history;
+    state.lastMove = fresh.lastMove;
+    state.lastFlips = fresh.lastFlips;
+    state.notice = fresh.notice;
+    state.moveNumber = fresh.moveNumber;
+    return state;
+  }
+
+  return {
+    SIZE: SIZE,
+    EMPTY: EMPTY,
+    BLACK: BLACK,
+    WHITE: WHITE,
+    createState: createState,
+    getFlips: getFlips,
+    legalMoves: legalMoves,
+    play: play,
+    undo: undo,
+    reset: reset,
+    counts: counts
+  };
+});
+
+</script>
+  <script>
+// app.js — 뒤집는 한 수 UI 로직 (engine.js에 의존, 외부 라이브러리 없음)
+
+(function () {
+  'use strict';
+
+  var Engine = (typeof window !== 'undefined' && window.ReversiEngine) ||
+    (typeof require === 'function' ? require('./engine.js') : null);
+
+  var SIZE = Engine.SIZE;
+  var BLACK = Engine.BLACK;
+  var WHITE = Engine.WHITE;
+
+  var state = Engine.createState();
+  var showHints = true;
+  var focusPos = { row: 0, col: 0 };
+
+  var boardEl = document.getElementById('board');
+  var colLabelsEl = document.getElementById('col-labels');
+  var rowLabelsEl = document.getElementById('row-labels');
+  var turnSwatchEl = document.getElementById('turn-swatch');
+  var turnTextEl = document.getElementById('turn-text');
+  var countBlackEl = document.getElementById('count-black');
+  var countWhiteEl = document.getElementById('count-white');
+  var countEmptyEl = document.getElementById('count-empty');
+  var moveNumberEl = document.getElementById('move-number');
+  var noticeEl = document.getElementById('notice');
+  var hintToggleEl = document.getElementById('hint-toggle');
+  var undoBtn = document.getElementById('undo-btn');
+  var newGameBtn = document.getElementById('new-game-btn');
+  var dialogOverlay = document.getElementById('dialog-overlay');
+  var dialogCancel = document.getElementById('dialog-cancel');
+  var dialogConfirm = document.getElementById('dialog-confirm');
+  var liveRegion = document.getElementById('live-region');
+
+  var COL_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+  var cellEls = []; // [row][col] -> button element
+
+  function buildLabels() {
+    for (var c = 0; c < SIZE; c++) {
+      var span = document.createElement('span');
+      span.textContent = COL_LABELS[c];
+      colLabelsEl.appendChild(span);
+    }
+    for (var r = 0; r < SIZE; r++) {
+      var rspan = document.createElement('span');
+      rspan.textContent = String(r + 1);
+      rowLabelsEl.appendChild(rspan);
+    }
+  }
+
+  function buildBoard() {
+    boardEl.innerHTML = '';
+    cellEls = [];
+    for (var r = 0; r < SIZE; r++) {
+      var rowArr = [];
+      for (var c = 0; c < SIZE; c++) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cell';
+        btn.setAttribute('role', 'gridcell');
+        btn.dataset.row = r;
+        btn.dataset.col = c;
+        btn.tabIndex = -1;
+        btn.addEventListener('click', onCellClick);
+        btn.addEventListener('keydown', onCellKeydown);
+        btn.addEventListener('focus', onCellFocus);
+        boardEl.appendChild(btn);
+        rowArr.push(btn);
+      }
+      cellEls.push(rowArr);
+    }
+    updateTabIndex();
+  }
+
+  function updateTabIndex() {
+    for (var r = 0; r < SIZE; r++) {
+      for (var c = 0; c < SIZE; c++) {
+        cellEls[r][c].tabIndex = (r === focusPos.row && c === focusPos.col) ? 0 : -1;
+      }
+    }
+  }
+
+  function onCellFocus(e) {
+    var r = Number(e.currentTarget.dataset.row);
+    var c = Number(e.currentTarget.dataset.col);
+    focusPos = { row: r, col: c };
+    updateTabIndex();
+  }
+
+  function coordLabel(row, col) {
+    return COL_LABELS[col] + String(row + 1);
+  }
+
+  function onCellClick(e) {
+    var r = Number(e.currentTarget.dataset.row);
+    var c = Number(e.currentTarget.dataset.col);
+    attemptMove(r, c);
+  }
+
+  function attemptMove(r, c) {
+    if (state.status !== 'playing') {
+      return;
+    }
+    var mover = state.turn;
+    var ok = Engine.play(state, r, c);
+    if (ok) {
+      focusPos = { row: r, col: c };
+      announceMove(mover, r, c);
+      render();
+    }
+  }
+
+  function announceMove(mover, r, c) {
+    var label = mover === BLACK ? '흑' : '백';
+    var msg = label + '이(가) ' + coordLabel(r, c) + '에 착수했습니다.';
+    liveRegion.textContent = msg;
+  }
+
+  function onCellKeydown(e) {
+    var r = Number(e.currentTarget.dataset.row);
+    var c = Number(e.currentTarget.dataset.col);
+    var handled = true;
+
+    switch (e.key) {
+      case 'ArrowUp':
+        r = Math.max(0, r - 1);
+        break;
+      case 'ArrowDown':
+        r = Math.min(SIZE - 1, r + 1);
+        break;
+      case 'ArrowLeft':
+        c = Math.max(0, c - 1);
+        break;
+      case 'ArrowRight':
+        c = Math.min(SIZE - 1, c + 1);
+        break;
+      case 'Enter':
+      case ' ':
+      case 'Spacebar':
+        attemptMove(r, c);
+        handled = true;
+        e.preventDefault();
+        return;
+      default:
+        handled = false;
+    }
+
+    if (handled) {
+      e.preventDefault();
+      focusPos = { row: r, col: c };
+      updateTabIndex();
+      cellEls[r][c].focus();
+    }
+  }
+
+  function render() {
+    var counts = Engine.counts(state.board);
+    var legal = state.status === 'playing' ? Engine.legalMoves(state.board, state.turn) : [];
+    var legalSet = {};
+    legal.forEach(function (m) { legalSet[m.row + ',' + m.col] = true; });
+
+    var lastFlipSet = {};
+    state.lastFlips.forEach(function (f) { lastFlipSet[f.row + ',' + f.col] = true; });
+
+    for (var r = 0; r < SIZE; r++) {
+      for (var c = 0; c < SIZE; c++) {
+        var cell = cellEls[r][c];
+        var val = state.board[r][c];
+        var key = r + ',' + c;
+        cell.innerHTML = '';
+        cell.classList.remove('last-move');
+
+        var label = coordLabel(r, c) + ', ';
+
+        if (val === BLACK || val === WHITE) {
+          var disk = document.createElement('span');
+          disk.className = 'disk ' + (val === BLACK ? 'black' : 'white');
+          if (lastFlipSet[key]) {
+            disk.classList.add('flipped');
+          }
+          cell.appendChild(disk);
+          label += (val === BLACK ? '흑돌' : '백돌');
+        } else if (showHints && legalSet[key]) {
+          var dot = document.createElement('span');
+          dot.className = 'hint-dot';
+          cell.appendChild(dot);
+          label += '착수 가능';
+        } else {
+          label += '빈칸';
+        }
+
+        cell.setAttribute('aria-label', label);
+
+        if (state.lastMove && state.lastMove.row === r && state.lastMove.col === c) {
+          cell.classList.add('last-move');
+        }
+      }
+    }
+
+    updateTabIndex();
+
+    countBlackEl.textContent = counts.black;
+    countWhiteEl.textContent = counts.white;
+    countEmptyEl.textContent = counts.empty;
+    moveNumberEl.textContent = state.moveNumber;
+    noticeEl.textContent = state.notice || '';
+
+    if (state.status === 'over') {
+      turnTextEl.textContent = '게임 종료';
+      turnSwatchEl.style.display = 'none';
+    } else {
+      turnSwatchEl.style.display = '';
+      turnSwatchEl.className = 'turn-swatch ' + (state.turn === BLACK ? 'black' : 'white');
+      turnTextEl.textContent = (state.turn === BLACK ? '흑' : '백') + ' 차례';
+    }
+
+    undoBtn.disabled = state.history.length === 0;
+  }
+
+  function requestNewGame() {
+    if (state.history.length === 0 && state.moveNumber === 0) {
+      Engine.reset(state);
+      focusPos = { row: 0, col: 0 };
+      render();
+      return;
+    }
+    openDialog();
+  }
+
+  function openDialog() {
+    dialogOverlay.hidden = false;
+    dialogCancel.focus();
+  }
+
+  function closeDialog() {
+    dialogOverlay.hidden = true;
+  }
+
+  dialogCancel.addEventListener('click', function () {
+    closeDialog();
+  });
+
+  dialogConfirm.addEventListener('click', function () {
+    Engine.reset(state);
+    focusPos = { row: 0, col: 0 };
+    closeDialog();
+    render();
+  });
+
+  dialogOverlay.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      closeDialog();
+    }
+  });
+
+  undoBtn.addEventListener('click', function () {
+    if (Engine.undo(state)) {
+      render();
+    }
+  });
+
+  newGameBtn.addEventListener('click', requestNewGame);
+
+  hintToggleEl.addEventListener('change', function () {
+    showHints = hintToggleEl.checked;
+    render();
+  });
+
+  buildLabels();
+  buildBoard();
+  render();
+})();
+
+</script>
+</body>
+</html>
