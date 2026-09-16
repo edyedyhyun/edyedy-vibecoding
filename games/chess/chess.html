@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>다음 한 수 — 체스 · 로컬 2인용</title>
+<style>
+  :root {
+    --cream: #f6f1e4;
+    --paper: #efe7d6;
+    --slate: #45566b;
+    --slate-dark: #1f2733;
+    --ivory: #faf7ef;
+    --charcoal: #262321;
+    --teal: #14807a;
+    --coral: #e0603f;
+    --light-square: #ece2cd;
+    --dark-square: #52667e;
+    --line: rgba(31, 39, 51, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--cream);
+    color: var(--charcoal);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 12px 40px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 1.7rem;
+    letter-spacing: 0.02em;
+    color: var(--slate-dark);
+  }
+
+  .subtitle {
+    margin: 4px 0 0;
+    font-size: 0.95rem;
+    color: var(--teal);
+    font-weight: 600;
+  }
+
+  main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    max-width: 800px;
+  }
+
+  .board-wrap {
+    display: grid;
+    grid-template-columns: 20px 480px;
+    grid-template-rows: 20px 480px;
+    max-width: 100%;
+  }
+
+  .corner { }
+
+  .col-labels, .row-labels {
+    display: flex;
+    color: var(--slate-dark);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .col-labels {
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  .row-labels {
+    grid-column: 1;
+    grid-row: 2;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  #board {
+    grid-column: 2;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 480px;
+    height: 480px;
+    max-width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--slate-dark);
+    border: 4px solid var(--slate-dark);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .cell {
+    border: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    outline-offset: -3px;
+    font-size: 2.4rem;
+    line-height: 1;
+  }
+
+  .cell.light { background: var(--light-square); }
+  .cell.dark { background: var(--dark-square); }
+
+  .cell:focus-visible {
+    outline: 3px solid var(--coral);
+  }
+
+  .cell.selected {
+    box-shadow: inset 0 0 0 3px var(--teal);
+  }
+
+  .cell.last-move {
+    box-shadow: inset 0 0 0 3px var(--coral);
+  }
+
+  .cell.selected.last-move {
+    box-shadow: inset 0 0 0 3px var(--teal), inset 0 0 0 6px var(--coral);
+  }
+
+  .cell.check-square {
+    background-image: radial-gradient(circle, rgba(224, 96, 63, 0.55), transparent 70%);
+  }
+
+  .piece-glyph {
+    user-select: none;
+    font-family: "Arial Unicode MS", "DejaVu Sans", serif;
+    font-size: 44px;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
+  }
+
+  .piece-glyph.white { color: var(--ivory); -webkit-text-stroke: 0.8px var(--charcoal); }
+  .piece-glyph.black { color: var(--charcoal); -webkit-text-stroke: 0.5px var(--ivory); }
+
+  .move-dot {
+    position: absolute;
+    width: 26%;
+    height: 26%;
+    border-radius: 50%;
+    background: rgba(20, 128, 122, 0.75);
+    pointer-events: none;
+  }
+
+  .capture-ring {
+    position: absolute;
+    inset: 6%;
+    border-radius: 50%;
+    border: 4px solid rgba(224, 96, 63, 0.85);
+    pointer-events: none;
+  }
+
+  .side-panel {
+    width: 280px;
+    max-width: 100%;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .status-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.9rem;
+  }
+
+  .turn-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+  }
+
+  .turn-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  .turn-swatch.w { background: var(--ivory); border: 1px solid rgba(0,0,0,0.2); }
+  .turn-swatch.b { background: var(--charcoal); }
+
+  .notice {
+    min-height: 20px;
+    font-size: 0.85rem;
+    color: var(--slate-dark);
+    background: rgba(20, 128, 122, 0.12);
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
+
+  .notice:empty {
+    padding: 0;
+    min-height: 0;
+    background: none;
+  }
+
+  .notice.result {
+    background: rgba(224, 96, 63, 0.18);
+    font-weight: 700;
+  }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  button.action {
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--slate-dark);
+    background: var(--ivory);
+    color: var(--slate-dark);
+    cursor: pointer;
+  }
+
+  button.action:hover:not(:disabled) {
+    background: var(--slate);
+    color: var(--ivory);
+  }
+
+  button.action:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  button.action.claim {
+    border-color: var(--coral);
+    color: var(--coral);
+  }
+
+  button.action.claim:hover:not(:disabled) {
+    background: var(--coral);
+    color: var(--ivory);
+  }
+
+  .move-log-wrap {
+    border-top: 1px dashed var(--line);
+    border-bottom: 1px dashed var(--line);
+    padding: 8px 0;
+  }
+
+  .move-log-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin: 0 0 6px;
+    color: var(--slate-dark);
+  }
+
+  #move-log {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 160px;
+    overflow-y: auto;
+    font-size: 0.82rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  #move-log li {
+    display: flex;
+    gap: 6px;
+  }
+
+  .move-log-num {
+    color: #7a7264;
+    min-width: 22px;
+  }
+
+  .legend {
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: #4a463f;
+  }
+
+  .legend-title {
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: var(--slate-dark);
+  }
+
+  .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px 8px;
+  }
+
+  .legend-grid span.glyph {
+    font-size: 1.1rem;
+    margin-right: 4px;
+  }
+
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 20, 20, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  .dialog-overlay[hidden] {
+    display: none;
+  }
+
+  .dialog-box {
+    background: var(--ivory);
+    border-radius: 8px;
+    padding: 20px;
+    width: 300px;
+    max-width: 90vw;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+
+  .dialog-box p {
+    margin: 0 0 16px;
+    font-size: 0.9rem;
+    color: var(--charcoal);
+  }
+
+  .dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .promo-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .promo-btn {
+    font-family: inherit;
+    font-size: 1.6rem;
+    padding: 10px 4px 4px;
+    border-radius: 6px;
+    border: 1px solid var(--slate-dark);
+    background: var(--ivory);
+    color: var(--charcoal);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .promo-btn .label {
+    font-size: 0.68rem;
+    font-weight: 600;
+  }
+
+  .promo-btn:hover {
+    background: var(--slate);
+    color: var(--ivory);
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 500px) {
+    .board-wrap {
+      grid-template-columns: 16px 1fr;
+      grid-template-rows: 16px 1fr;
+      width: 100%;
+    }
+
+    #board {
+      width: 100%;
+      height: auto;
+      font-size: 1.6rem;
+    }
+
+    main {
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .side-panel {
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 1.3rem;
+    }
+  }
+@media (max-width: 520px) { .piece-glyph { font-size: clamp(22px, 7vw, 40px); } }
+</style>
+</head>
+<body>
+  <header>
+    <h1>다음 한 수</h1>
+    <p class="subtitle">체스 · 로컬 2인용</p>
+  </header>
+
+  <main>
+    <div class="board-wrap">
+      <div class="corner"></div>
+      <div class="col-labels" id="col-labels" aria-hidden="true"></div>
+      <div class="row-labels" id="row-labels" aria-hidden="true"></div>
+      <div id="board" role="grid" aria-label="체스 8x8 보드"></div>
+    </div>
+
+    <section class="side-panel" aria-label="게임 정보 및 조작">
+      <div class="status-block">
+        <div class="turn-line">
+          <span class="turn-swatch" id="turn-swatch"></span>
+          <span id="turn-text">백 차례</span>
+        </div>
+        <div class="notice" id="notice" role="status" aria-live="polite"></div>
+      </div>
+
+      <div class="controls">
+        <button class="action" id="undo-btn" type="button" disabled>한 수 무르기</button>
+        <button class="action" id="flip-btn" type="button">보드 뒤집기</button>
+        <button class="action claim" id="claim-fifty-btn" type="button" hidden>50수 무승부 선언</button>
+        <button class="action claim" id="claim-threefold-btn" type="button" hidden>3회 동형 무승부 선언</button>
+        <button class="action" id="new-game-btn" type="button">새 게임</button>
+      </div>
+
+      <div class="move-log-wrap">
+        <p class="move-log-title">기보</p>
+        <ol id="move-log" aria-label="이동 기록"></ol>
+      </div>
+
+      <div class="legend">
+        <p class="legend-title">기물 안내</p>
+        <div class="legend-grid">
+          <span><span class="glyph">♔</span>킹</span>
+          <span><span class="glyph">♕</span>퀸</span>
+          <span><span class="glyph">♖</span>룩</span>
+          <span><span class="glyph">♗</span>비숍</span>
+          <span><span class="glyph">♘</span>나이트</span>
+          <span><span class="glyph">♙</span>폰</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="dialog-overlay" id="dialog-overlay" hidden>
+    <div class="dialog-box" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title">
+      <p id="dialog-title">진행 중인 게임이 있습니다. 새 게임을 시작할까요?</p>
+      <div class="dialog-buttons">
+        <button class="action" id="dialog-cancel" type="button">취소</button>
+        <button class="action" id="dialog-confirm" type="button">새 게임 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="dialog-overlay" id="promo-overlay" hidden>
+    <div class="dialog-box" role="alertdialog" aria-modal="true" aria-labelledby="promo-title">
+      <p id="promo-title">승진할 기물을 선택하세요.</p>
+      <div class="promo-buttons" id="promo-buttons"></div>
+    </div>
+  </div>
+
+  <span class="visually-hidden" id="live-region" aria-live="polite"></span>
+
+  <script>
+// engine.js — 다음 한 수 (Chess) 순수 게임 엔진
+// CommonJS + 브라우저(window.ChessEngine) 겸용, 외부 의존성 없음, DOM 비의존.
+//
+// ## 상태(state) 구조
+// {
+//   board: 8x8 배열, board[row][col] (row 0 = 1랭크, col 0 = a파일).
+//          각 칸은 null 또는 색+기물 2글자 문자열('wP','bK' 등. P/N/B/R/Q/K).
+//   turn: 'w' | 'b' — 현재 둘 차례.
+//   castling: { w: {K:bool,Q:bool}, b: {K:bool,Q:bool} } — 캐슬링 권리.
+//   enPassant: 앙파상 대상 칸 문자열('e3' 등) 또는 null.
+//   halfmoveClock: 폰 이동/기물포획 이후 하프무브 수(50수 규칙용).
+//   fullmoveNumber: 전체 수 번호(흑이 두고 나면 +1).
+//   positionCounts: { positionKey: count } — 3회/5회 동형 반복 판정용.
+//   history: 스냅샷 스택(무르기용, 내부 전용 — UI는 참조하지 말 것).
+//   status: 'playing' | 'checkmate' | 'stalemate' | 'draw'.
+//   winner: 'w' | 'b' | null.
+//   reason: 상태 사유 코드(문자열) 또는 null.
+//   lastMove: {from,to,promotion,piece,capture,castle} 또는 null.
+//   moveLog: [{from,to,promotion,color,notation}, ...]
+// }
+//
+// ## 공개 API
+// createState() -> state
+// loadFEN(fen) -> state
+// legalMoves(state, from?) -> [{from,to,promotion?,flags}]  (from 생략 시 현재 차례의 모든 합법수)
+// play(state, from, to, promotion?) -> boolean (성공 시 state를 직접 변형)
+//   - 프로모션이 필요한 수인데 promotion 인자가 없으면 false를 반환하고 state를 변형하지 않는다.
+//     (UI는 프로모션 모달을 띄운 뒤 promotion 값을 채워 다시 호출해야 한다.)
+// undo(state) -> boolean (직전 수/무승부 선언을 포함해 한 단계 되돌림)
+// status(state) -> {turn, status, winner, reason, inCheck, halfmoveClock, fullmoveNumber,
+//                    canClaimFifty, canClaimThreefold}
+// claimDraw(state, type) -> boolean  (type: 'fifty' | 'threefold')
+// isAttacked(board, square, byColor) -> boolean (독립적인 공격 판정, 합법수 생성과 분리)
+// findKing(board, color) -> square 문자열 | null
+// toFEN(state) -> FEN 문자열
+
+(function (root, factory) {
+  var mod = factory();
+  if (typeof module === 'object' && module.exports) {
+    module.exports = mod;
+  }
+  if (root) {
+    root.ChessEngine = mod;
+  }
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : null), function () {
+  'use strict';
+
+  var FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  var PROMO_TYPES = ['Q', 'R', 'B', 'N'];
+
+  // ---------- 기본 좌표 유틸 ----------
+
+  function sq(row, col) {
+    return FILES[col] + String(row + 1);
+  }
+
+  function parseSquare(s) {
+    var col = s.charCodeAt(0) - 97;
+    var row = Number(s[1]) - 1;
+    return { row: row, col: col };
+  }
+
+  function inBounds(r, c) {
+    return r >= 0 && r < 8 && c >= 0 && c < 8;
+  }
+
+  function allSquares() {
+    var list = [];
+    for (var r = 0; r < 8; r++) {
+      for (var c = 0; c < 8; c++) {
+        list.push({ row: r, col: c });
+      }
+    }
+    return list;
+  }
+
+  function pieceColor(p) { return p ? p[0] : null; }
+  function pieceType(p) { return p ? p[1] : null; }
+  function opponent(color) { return color === 'w' ? 'b' : 'w'; }
+
+  function cloneBoard(board) {
+    return board.map(function (row) { return row.slice(); });
+  }
+
+  // ---------- 초기 상태 ----------
+
+  function emptyBoard() {
+    var board = [];
+    for (var r = 0; r < 8; r++) board.push(new Array(8).fill(null));
+    return board;
+  }
+
+  function createState() {
+    var board = emptyBoard();
+    var backRank = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'];
+    for (var c = 0; c < 8; c++) {
+      board[0][c] = 'w' + backRank[c];
+      board[1][c] = 'wP';
+      board[6][c] = 'bP';
+      board[7][c] = 'b' + backRank[c];
+    }
+
+    var state = {
+      board: board,
+      turn: 'w',
+      castling: { w: { K: true, Q: true }, b: { K: true, Q: true } },
+      enPassant: null,
+      halfmoveClock: 0,
+      fullmoveNumber: 1,
+      positionCounts: {},
+      history: [],
+      status: 'playing',
+      winner: null,
+      reason: null,
+      lastMove: null,
+      moveLog: []
+    };
+    state.positionCounts[positionKey(state)] = 1;
+    return state;
+  }
+
+  function cloneState(state) {
+    return {
+      board: cloneBoard(state.board),
+      turn: state.turn,
+      castling: {
+        w: { K: state.castling.w.K, Q: state.castling.w.Q },
+        b: { K: state.castling.b.K, Q: state.castling.b.Q }
+      },
+      enPassant: state.enPassant,
+      halfmoveClock: state.halfmoveClock,
+      fullmoveNumber: state.fullmoveNumber,
+      positionCounts: Object.assign({}, state.positionCounts),
+      status: state.status,
+      winner: state.winner,
+      reason: state.reason,
+      lastMove: state.lastMove ? Object.assign({}, state.lastMove) : null,
+      moveLog: state.moveLog.slice()
+    };
+  }
+
+  // ---------- 공격 판정 (합법수 생성과 독립적) ----------
+
+  var KNIGHT_OFFSETS = [
+    [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+    [1, -2], [1, 2], [2, -1], [2, 1]
+  ];
+  var KING_OFFSETS = [
+    [-1, -1], [-1, 0], [-1, 1],
+    [0, -1], [0, 1],
+    [1, -1], [1, 0], [1, 1]
+  ];
+  var ROOK_DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  var BISHOP_DIRS = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+
+  function isAttacked(board, square, byColor) {
+    var pos = parseSquare(square);
+    var row = pos.row, col = pos.col;
+
+    // 폰 공격
+    var pawnRow = byColor === 'w' ? row - 1 : row + 1;
+    if (inBounds(pawnRow, col - 1) && board[pawnRow][col - 1] === byColor + 'P') return true;
+    if (inBounds(pawnRow, col + 1) && board[pawnRow][col + 1] === byColor + 'P') return true;
+
+    // 나이트 공격
+    for (var i = 0; i < KNIGHT_OFFSETS.length; i++) {
+      var nr = row + KNIGHT_OFFSETS[i][0], nc = col + KNIGHT_OFFSETS[i][1];
+      if (inBounds(nr, nc) && board[nr][nc] === byColor + 'N') return true;
+    }
+
+    // 킹 공격
+    for (var k = 0; k < KING_OFFSETS.length; k++) {
+      var kr = row + KING_OFFSETS[k][0], kc = col + KING_OFFSETS[k][1];
+      if (inBounds(kr, kc) && board[kr][kc] === byColor + 'K') return true;
+    }
+
+    // 슬라이딩: 룩/퀸 (직선)
+    for (var d1 = 0; d1 < ROOK_DIRS.length; d1++) {
+      var dr = ROOK_DIRS[d1][0], dc = ROOK_DIRS[d1][1];
+      var r = row + dr, c = col + dc;
+      while (inBounds(r, c)) {
+        var p = board[r][c];
+        if (p) {
+          if (pieceColor(p) === byColor && (pieceType(p) === 'R' || pieceType(p) === 'Q')) return true;
+          break;
+        }
+        r += dr; c += dc;
+      }
+    }
+
+    // 슬라이딩: 비숍/퀸 (대각선)
+    for (var d2 = 0; d2 < BISHOP_DIRS.length; d2++) {
+      var bdr = BISHOP_DIRS[d2][0], bdc = BISHOP_DIRS[d2][1];
+      var br = row + bdr, bc = col + bdc;
+      while (inBounds(br, bc)) {
+        var bp = board[br][bc];
+        if (bp) {
+          if (pieceColor(bp) === byColor && (pieceType(bp) === 'B' || pieceType(bp) === 'Q')) return true;
+          break;
+        }
+        br += bdr; bc += bdc;
+      }
+    }
+
+    return false;
+  }
+
+  function findKing(board, color) {
+    for (var r = 0; r < 8; r++) {
+      for (var c = 0; c < 8; c++) {
+        if (board[r][c] === color + 'K') return sq(r, c);
+      }
+    }
+    return null;
+  }
+
+  // ---------- 수 생성 (의사 합법수) ----------
+
+  function generatePseudoMoves(state, from) {
+    var board = state.board;
+    var turn = state.turn;
+    var moves = [];
+    var squares = from ? [parseSquare(from)] : allSquares();
+
+    squares.forEach(function (pos) {
+      var row = pos.row, col = pos.col;
+      var p = board[row][col];
+      if (!p || pieceColor(p) !== turn) return;
+      var type = pieceType(p);
+
+      if (type === 'P') addPawnMoves(row, col);
+      else if (type === 'N') addStepMoves(row, col, KNIGHT_OFFSETS);
+      else if (type === 'B') addSlidingMoves(row, col, BISHOP_DIRS);
+      else if (type === 'R') addSlidingMoves(row, col, ROOK_DIRS);
+      else if (type === 'Q') { addSlidingMoves(row, col, ROOK_DIRS); addSlidingMoves(row, col, BISHOP_DIRS); }
+      else if (type === 'K') { addStepMoves(row, col, KING_OFFSETS); addCastlingMoves(row, col); }
+    });
+
+    return moves;
+
+    function addPawnMoves(row, col) {
+      var dir = turn === 'w' ? 1 : -1;
+      var startRow = turn === 'w' ? 1 : 6;
+      var promoRow = turn === 'w' ? 7 : 0;
+
+      var r1 = row + dir;
+      if (inBounds(r1, col) && !board[r1][col]) {
+        pushPawnTarget(row, col, r1, col, false);
+        var r2 = row + 2 * dir;
+        if (row === startRow && !board[r2][col]) {
+          moves.push({ from: sq(row, col), to: sq(r2, col), flags: { doublePush: true } });
+        }
+      }
+
+      [-1, 1].forEach(function (dc) {
+        var nc = col + dc, nr = row + dir;
+        if (!inBounds(nr, nc)) return;
+        var target = board[nr][nc];
+        if (target && pieceColor(target) !== turn) {
+          pushPawnTarget(row, col, nr, nc, true);
+        } else if (!target && state.enPassant === sq(nr, nc)) {
+          moves.push({ from: sq(row, col), to: sq(nr, nc), flags: { capture: true, enPassant: true } });
+        }
+      });
+
+      function pushPawnTarget(fr, fc, tr, tc, isCapture) {
+        if (tr === promoRow) {
+          PROMO_TYPES.forEach(function (promo) {
+            moves.push({ from: sq(fr, fc), to: sq(tr, tc), promotion: promo, flags: { capture: isCapture } });
+          });
+        } else {
+          moves.push({ from: sq(fr, fc), to: sq(tr, tc), flags: { capture: isCapture } });
+        }
+      }
+    }
+
+    function addStepMoves(row, col, offsets) {
+      offsets.forEach(function (o) {
+        var nr = row + o[0], nc = col + o[1];
+        if (!inBounds(nr, nc)) return;
+        var target = board[nr][nc];
+        if (!target) {
+          moves.push({ from: sq(row, col), to: sq(nr, nc), flags: { capture: false } });
+        } else if (pieceColor(target) !== turn) {
+          moves.push({ from: sq(row, col), to: sq(nr, nc), flags: { capture: true } });
+        }
+      });
+    }
+
+    function addSlidingMoves(row, col, dirs) {
+      dirs.forEach(function (d) {
+        var r = row + d[0], c = col + d[1];
+        while (inBounds(r, c)) {
+          var target = board[r][c];
+          if (!target) {
+            moves.push({ from: sq(row, col), to: sq(r, c), flags: { capture: false } });
+          } else {
+            if (pieceColor(target) !== turn) {
+              moves.push({ from: sq(row, col), to: sq(r, c), flags: { capture: true } });
+            }
+            break;
+          }
+          r += d[0]; c += d[1];
+        }
+      });
+    }
+
+    function addCastlingMoves(row, col) {
+      var rights = state.castling[turn];
+      var opp = opponent(turn);
+      var homeRow = turn === 'w' ? 0 : 7;
+      if (row !== homeRow || col !== 4) return;
+      if (isAttacked(board, sq(homeRow, 4), opp)) return; // 현재 체크 중이면 캐슬링 불가
+
+      if (rights.K && !board[homeRow][5] && !board[homeRow][6] &&
+        board[homeRow][7] === turn + 'R' &&
+        !isAttacked(board, sq(homeRow, 5), opp) && !isAttacked(board, sq(homeRow, 6), opp)) {
+        moves.push({ from: sq(homeRow, 4), to: sq(homeRow, 6), flags: { castle: 'K' } });
+      }
+      if (rights.Q && !board[homeRow][3] && !board[homeRow][2] && !board[homeRow][1] &&
+        board[homeRow][0] === turn + 'R' &&
+        !isAttacked(board, sq(homeRow, 3), opp) && !isAttacked(board, sq(homeRow, 2), opp)) {
+        moves.push({ from: sq(homeRow, 4), to: sq(homeRow, 2), flags: { castle: 'Q' } });
+      }
+    }
+  }
+
+  // ---------- 수 적용 (순수 보드 변형, 시뮬레이션/실제 착수 공용) ----------
+
+  function executeMove(board, move) {
+    var f = parseSquare(move.from), t = parseSquare(move.to);
+    var piece = board[f.row][f.col];
+
+    if (move.flags && move.flags.enPassant) {
+      board[f.row][t.col] = null; // 잡힌 폰은 이동한 줄, 목표 칸의 열에 위치
+    }
+
+    board[f.row][f.col] = null;
+    if (move.promotion) {
+      piece = pieceColor(piece) + move.promotion;
+    }
+    board[t.row][t.col] = piece;
+
+    if (move.flags && move.flags.castle) {
+      var row = f.row;
+      if (move.flags.castle === 'K') {
+        board[row][5] = board[row][7];
+        board[row][7] = null;
+      } else {
+        board[row][3] = board[row][0];
+        board[row][0] = null;
+      }
+    }
+  }
+
+  // ---------- 합법수 (킹 안전성 필터 포함) ----------
+
+  function legalMoves(state, from) {
+    if (state.status !== 'playing') return [];
+    if (from && !/^[a-h][1-8]$/.test(from)) return [];
+
+    var pseudo = generatePseudoMoves(state, from);
+    var legal = [];
+    var turn = state.turn;
+
+    pseudo.forEach(function (move) {
+      var boardCopy = cloneBoard(state.board);
+      executeMove(boardCopy, move);
+      var kingSq = findKing(boardCopy, turn);
+      if (!kingSq) return;
+      if (!isAttacked(boardCopy, kingSq, opponent(turn))) {
+        legal.push(move);
+      }
+    });
+
+    return legal;
+  }
+
+  // ---------- 착수 ----------
+
+  function updateCastlingRights(state, movingPiece, from, to) {
+    var type = pieceType(movingPiece), color = pieceColor(movingPiece);
+    if (type === 'K') {
+      state.castling[color].K = false;
+      state.castling[color].Q = false;
+    }
+    if (type === 'R') {
+      if (color === 'w' && from === 'h1') state.castling.w.K = false;
+      if (color === 'w' && from === 'a1') state.castling.w.Q = false;
+      if (color === 'b' && from === 'h8') state.castling.b.K = false;
+      if (color === 'b' && from === 'a8') state.castling.b.Q = false;
+    }
+    if (to === 'h1') state.castling.w.K = false;
+    if (to === 'a1') state.castling.w.Q = false;
+    if (to === 'h8') state.castling.b.K = false;
+    if (to === 'a8') state.castling.b.Q = false;
+  }
+
+  function epTargetSquare(from, to) {
+    var f = parseSquare(from), t = parseSquare(to);
+    var midRow = (f.row + t.row) / 2;
+    return sq(midRow, f.col);
+  }
+
+  function play(state, from, to, promotion) {
+    if (state.status !== 'playing') return false;
+    if (!/^[a-h][1-8]$/.test(from) || !/^[a-h][1-8]$/.test(to)) return false;
+
+    var candidates = legalMoves(state, from).filter(function (m) { return m.to === to; });
+    if (candidates.length === 0) return false;
+
+    var requiresPromotion = candidates.some(function (m) { return !!m.promotion; });
+    var move;
+    if (requiresPromotion) {
+      if (!promotion || PROMO_TYPES.indexOf(promotion) === -1) return false;
+      move = candidates.filter(function (m) { return m.promotion === promotion; })[0];
+      if (!move) return false;
+    } else {
+      move = candidates[0];
+    }
+
+    state.history.push(cloneState(state));
+
+    var fPos = parseSquare(from);
+    var movingPiece = state.board[fPos.row][fPos.col];
+    var isCapture = !!(move.flags.capture || move.flags.enPassant);
+    var isPawnMove = pieceType(movingPiece) === 'P';
+    var movedColor = state.turn;
+
+    executeMove(state.board, move);
+    updateCastlingRights(state, movingPiece, from, to);
+    state.enPassant = move.flags.doublePush ? epTargetSquare(from, to) : null;
+    state.halfmoveClock = (isPawnMove || isCapture) ? 0 : state.halfmoveClock + 1;
+    if (movedColor === 'b') state.fullmoveNumber += 1;
+    state.turn = opponent(movedColor);
+
+    var key = positionKey(state);
+    state.positionCounts[key] = (state.positionCounts[key] || 0) + 1;
+
+    var notation = from + '-' + to + (move.promotion ? '=' + move.promotion : '');
+    state.lastMove = {
+      from: from, to: to, promotion: move.promotion || null,
+      piece: movingPiece, capture: isCapture, castle: move.flags.castle || null
+    };
+    state.moveLog.push({ from: from, to: to, promotion: move.promotion || null, color: movedColor, notation: notation });
+
+    refreshStatus(state);
+    return true;
+  }
+
+  function undo(state) {
+    if (state.history.length === 0) return false;
+    var prev = state.history.pop();
+    state.board = prev.board;
+    state.turn = prev.turn;
+    state.castling = prev.castling;
+    state.enPassant = prev.enPassant;
+    state.halfmoveClock = prev.halfmoveClock;
+    state.fullmoveNumber = prev.fullmoveNumber;
+    state.positionCounts = prev.positionCounts;
+    state.status = prev.status;
+    state.winner = prev.winner;
+    state.reason = prev.reason;
+    state.lastMove = prev.lastMove;
+    state.moveLog = prev.moveLog;
+    return true;
+  }
+
+  // ---------- 종국 판정 ----------
+
+  function isInsufficientMaterial(board) {
+    var minors = { w: [], b: [] };
+    for (var r = 0; r < 8; r++) {
+      for (var c = 0; c < 8; c++) {
+        var p = board[r][c];
+        if (!p) continue;
+        var type = pieceType(p), color = pieceColor(p);
+        if (type === 'K') continue;
+        if (type === 'P' || type === 'R' || type === 'Q') return false;
+        minors[color].push({ type: type, row: r, col: c });
+      }
+    }
+    var w = minors.w, b = minors.b;
+    if (w.length === 0 && b.length === 0) return true;
+    if (w.length === 1 && b.length === 0 && (w[0].type === 'N' || w[0].type === 'B')) return true;
+    if (b.length === 1 && w.length === 0 && (b[0].type === 'N' || b[0].type === 'B')) return true;
+    var all = w.concat(b);
+    if (all.length && all.every(function(p) { return p.type === 'B'; })) {
+      var squareColor = (all[0].row + all[0].col) % 2;
+      if (all.every(function(p) { return (p.row + p.col) % 2 === squareColor; })) return true;
+    }
+    return false;
+  }
+
+  function refreshStatus(state) {
+    var color = state.turn;
+    var kingSq = findKing(state.board, color);
+    var inCheck = kingSq ? isAttacked(state.board, kingSq, opponent(color)) : false;
+    var moves = legalMoves(state);
+
+    if (moves.length === 0) {
+      if (inCheck) {
+        state.status = 'checkmate';
+        state.winner = opponent(color);
+        state.reason = 'checkmate';
+      } else {
+        state.status = 'stalemate';
+        state.winner = null;
+        state.reason = 'stalemate';
+      }
+      return;
+    }
+
+    if (isInsufficientMaterial(state.board)) {
+      state.status = 'draw'; state.winner = null; state.reason = 'insufficient';
+      return;
+    }
+    if (state.halfmoveClock >= 150) {
+      state.status = 'draw'; state.winner = null; state.reason = '75move';
+      return;
+    }
+    var key = positionKey(state);
+    if (state.positionCounts[key] >= 5) {
+      state.status = 'draw'; state.winner = null; state.reason = 'fivefold';
+      return;
+    }
+
+    state.status = 'playing';
+    state.winner = null;
+    state.reason = null;
+  }
+
+  function claimDraw(state, type) {
+    if (state.status !== 'playing') return false;
+    if (type === 'fifty' && state.halfmoveClock >= 100) {
+      state.history.push(cloneState(state));
+      state.status = 'draw'; state.winner = null; state.reason = 'fifty-claimed';
+      return true;
+    }
+    if (type === 'threefold') {
+      var key = positionKey(state);
+      if ((state.positionCounts[key] || 0) >= 3) {
+        state.history.push(cloneState(state));
+        state.status = 'draw'; state.winner = null; state.reason = 'threefold-claimed';
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function status(state) {
+    var color = state.turn;
+    var kingSq = findKing(state.board, color);
+    var inCheck = state.status === 'playing' && kingSq ? isAttacked(state.board, kingSq, opponent(color)) : false;
+    var key = positionKey(state);
+    return {
+      turn: state.turn,
+      status: state.status,
+      winner: state.winner,
+      reason: state.reason,
+      inCheck: inCheck,
+      halfmoveClock: state.halfmoveClock,
+      fullmoveNumber: state.fullmoveNumber,
+      canClaimFifty: state.status === 'playing' && state.halfmoveClock >= 100,
+      canClaimThreefold: state.status === 'playing' && (state.positionCounts[key] || 0) >= 3
+    };
+  }
+
+  // ---------- FEN ----------
+
+  function toFEN(state) {
+    var rows = [];
+    for (var r = 7; r >= 0; r--) {
+      var runLen = 0, rowStr = '';
+      for (var c = 0; c < 8; c++) {
+        var p = state.board[r][c];
+        if (!p) {
+          runLen++;
+        } else {
+          if (runLen > 0) { rowStr += runLen; runLen = 0; }
+          var letter = pieceType(p);
+          rowStr += pieceColor(p) === 'w' ? letter : letter.toLowerCase();
+        }
+      }
+      if (runLen > 0) rowStr += runLen;
+      rows.push(rowStr);
+    }
+    var placement = rows.join('/');
+    var castlingStr = '' +
+      (state.castling.w.K ? 'K' : '') +
+      (state.castling.w.Q ? 'Q' : '') +
+      (state.castling.b.K ? 'k' : '') +
+      (state.castling.b.Q ? 'q' : '');
+    if (!castlingStr) castlingStr = '-';
+    var ep = state.enPassant || '-';
+    return [placement, state.turn, castlingStr, ep, state.halfmoveClock, state.fullmoveNumber].join(' ');
+  }
+
+  function positionKey(state) {
+    var fen = toFEN(state);
+    var parts = fen.split(' ').slice(0, 4);
+    // En passant changes repetition identity only when a legal capture exists.
+    if (state.enPassant && !legalMoves(state).some(function(m) { return m.flags.enPassant; })) parts[3] = '-';
+    return parts.join(' ');
+  }
+
+  function loadFEN(fen) {
+    var parts = fen.trim().split(/\s+/);
+    var placement = parts[0], turn = parts[1] || 'w', castlingStr = parts[2] || '-',
+      epStr = parts[3] || '-', halfmove = parseInt(parts[4], 10), fullmove = parseInt(parts[5], 10);
+
+    var board = emptyBoard();
+    var rows = placement.split('/');
+    for (var i = 0; i < 8; i++) {
+      var r = 7 - i;
+      var row = rows[i];
+      var col = 0;
+      for (var j = 0; j < row.length; j++) {
+        var ch = row[j];
+        if (/[1-8]/.test(ch)) {
+          col += Number(ch);
+        } else {
+          var color = ch === ch.toUpperCase() ? 'w' : 'b';
+          board[r][col] = color + ch.toUpperCase();
+          col++;
+        }
+      }
+    }
+
+    var state = {
+      board: board,
+      turn: turn === 'b' ? 'b' : 'w',
+      castling: {
+        w: { K: castlingStr.indexOf('K') !== -1, Q: castlingStr.indexOf('Q') !== -1 },
+        b: { K: castlingStr.indexOf('k') !== -1, Q: castlingStr.indexOf('q') !== -1 }
+      },
+      enPassant: epStr === '-' ? null : epStr,
+      halfmoveClock: isNaN(halfmove) ? 0 : halfmove,
+      fullmoveNumber: isNaN(fullmove) ? 1 : fullmove,
+      positionCounts: {},
+      history: [],
+      status: 'playing',
+      winner: null,
+      reason: null,
+      lastMove: null,
+      moveLog: []
+    };
+    state.positionCounts[positionKey(state)] = 1;
+    refreshStatus(state);
+    return state;
+  }
+
+  return {
+    createState: createState,
+    loadFEN: loadFEN,
+    legalMoves: legalMoves,
+    play: play,
+    undo: undo,
+    status: status,
+    claimDraw: claimDraw,
+    isAttacked: isAttacked,
+    findKing: findKing,
+    toFEN: toFEN
+  };
+});
+
+</script>
+  <script>
+// app.js — 다음 한 수 UI 로직 (engine.js에 의존, 외부 라이브러리 없음)
+
+(function () {
+  'use strict';
+
+  var Engine = (typeof window !== 'undefined' && window.ChessEngine) ||
+    (typeof require === 'function' ? require('./engine.js') : null);
+
+  var FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  var PIECE_GLYPH = {
+    K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟'
+  };
+  var PIECE_NAME_KO = {
+    K: '킹', Q: '퀸', R: '룩', B: '비숍', N: '나이트', P: '폰'
+  };
+  var PROMO_ORDER = ['Q', 'R', 'B', 'N'];
+
+  var state = Engine.createState();
+  var selected = null; // 'e2' 형식의 선택된 칸
+  var legalTargets = []; // 선택된 기물의 합법수 목록 (engine move 객체)
+  var pendingPromotion = null; // {from, to}
+  var orientation = 'white'; // 'white' | 'black' — 보드 시점
+  var focus = { dr: 0, dc: 0 }; // 화면 표시 좌표 기준 포커스
+
+  var boardEl = document.getElementById('board');
+  var colLabelsEl = document.getElementById('col-labels');
+  var rowLabelsEl = document.getElementById('row-labels');
+  var turnSwatchEl = document.getElementById('turn-swatch');
+  var turnTextEl = document.getElementById('turn-text');
+  var noticeEl = document.getElementById('notice');
+  var undoBtn = document.getElementById('undo-btn');
+  var flipBtn = document.getElementById('flip-btn');
+  var claimFiftyBtn = document.getElementById('claim-fifty-btn');
+  var claimThreefoldBtn = document.getElementById('claim-threefold-btn');
+  var newGameBtn = document.getElementById('new-game-btn');
+  var moveLogEl = document.getElementById('move-log');
+  var dialogOverlay = document.getElementById('dialog-overlay');
+  var dialogCancel = document.getElementById('dialog-cancel');
+  var dialogConfirm = document.getElementById('dialog-confirm');
+  var promoOverlay = document.getElementById('promo-overlay');
+  var promoButtonsEl = document.getElementById('promo-buttons');
+  var liveRegion = document.getElementById('live-region');
+
+  var cellEls = []; // cellEls[dr][dc] -> button
+
+  function sq(row, col) { return FILES[col] + String(row + 1); }
+
+  function displayToAbsolute(dr, dc) {
+    if (orientation === 'white') {
+      return { row: 7 - dr, col: dc };
+    }
+    return { row: dr, col: 7 - dc };
+  }
+
+  function absoluteToDisplay(row, col) {
+    if (orientation === 'white') {
+      return { dr: 7 - row, dc: col };
+    }
+    return { dr: row, dc: 7 - col };
+  }
+
+  function buildLabels() {
+    colLabelsEl.innerHTML = '';
+    rowLabelsEl.innerHTML = '';
+    for (var dc = 0; dc < 8; dc++) {
+      var abs = displayToAbsolute(0, dc);
+      var span = document.createElement('span');
+      span.textContent = FILES[abs.col].toUpperCase();
+      colLabelsEl.appendChild(span);
+    }
+    for (var dr = 0; dr < 8; dr++) {
+      var absR = displayToAbsolute(dr, 0);
+      var rspan = document.createElement('span');
+      rspan.textContent = String(absR.row + 1);
+      rowLabelsEl.appendChild(rspan);
+    }
+  }
+
+  function buildBoard() {
+    boardEl.innerHTML = '';
+    cellEls = [];
+    for (var dr = 0; dr < 8; dr++) {
+      var rowArr = [];
+      for (var dc = 0; dc < 8; dc++) {
+        var abs = displayToAbsolute(dr, dc);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cell ' + ((abs.row + abs.col) % 2 === 0 ? 'dark' : 'light');
+        btn.setAttribute('role', 'gridcell');
+        btn.dataset.dr = dr;
+        btn.dataset.dc = dc;
+        btn.tabIndex = -1;
+        btn.addEventListener('click', onCellClick);
+        btn.addEventListener('keydown', onCellKeydown);
+        btn.addEventListener('focus', onCellFocus);
+        boardEl.appendChild(btn);
+        rowArr.push(btn);
+      }
+      cellEls.push(rowArr);
+    }
+    updateTabIndex();
+  }
+
+  function updateTabIndex() {
+    for (var dr = 0; dr < 8; dr++) {
+      for (var dc = 0; dc < 8; dc++) {
+        cellEls[dr][dc].tabIndex = (dr === focus.dr && dc === focus.dc) ? 0 : -1;
+      }
+    }
+  }
+
+  function onCellFocus(e) {
+    focus = { dr: Number(e.currentTarget.dataset.dr), dc: Number(e.currentTarget.dataset.dc) };
+    updateTabIndex();
+  }
+
+  function onCellClick(e) {
+    var dr = Number(e.currentTarget.dataset.dr), dc = Number(e.currentTarget.dataset.dc);
+    var abs = displayToAbsolute(dr, dc);
+    handleSquareActivate(abs.row, abs.col);
+  }
+
+  function onCellKeydown(e) {
+    var dr = Number(e.currentTarget.dataset.dr), dc = Number(e.currentTarget.dataset.dc);
+    switch (e.key) {
+      case 'ArrowUp':
+        dr = Math.max(0, dr - 1);
+        break;
+      case 'ArrowDown':
+        dr = Math.min(7, dr + 1);
+        break;
+      case 'ArrowLeft':
+        dc = Math.max(0, dc - 1);
+        break;
+      case 'ArrowRight':
+        dc = Math.min(7, dc + 1);
+        break;
+      case 'Enter':
+      case ' ':
+      case 'Spacebar': {
+        e.preventDefault();
+        var abs = displayToAbsolute(dr, dc);
+        handleSquareActivate(abs.row, abs.col);
+        return;
+      }
+      default:
+        return;
+    }
+    e.preventDefault();
+    focus = { dr: dr, dc: dc };
+    updateTabIndex();
+    cellEls[dr][dc].focus();
+  }
+
+  function handleSquareActivate(row, col) {
+    if (pendingPromotion) return;
+    if (state.status !== 'playing') return;
+
+    var squareStr = sq(row, col);
+    var piece = state.board[row][col];
+
+    if (!selected) {
+      if (piece && piece[0] === state.turn) {
+        selectSquare(squareStr);
+      }
+      return;
+    }
+
+    if (selected === squareStr) {
+      clearSelection();
+      render();
+      return;
+    }
+
+    if (piece && piece[0] === state.turn) {
+      selectSquare(squareStr);
+      return;
+    }
+
+    var match = legalTargets.filter(function (m) { return m.to === squareStr; });
+    if (match.length === 0) {
+      return;
+    }
+
+    var requiresPromotion = match.some(function (m) { return !!m.promotion; });
+    if (requiresPromotion) {
+      pendingPromotion = { from: selected, to: squareStr, color: state.turn };
+      openPromoDialog();
+      return;
+    }
+
+    var mover = state.turn;
+    var ok = Engine.play(state, selected, squareStr);
+    if (ok) {
+      focus = absoluteToDisplay(row, col);
+      announceMove(mover, selected, squareStr, null);
+      clearSelection();
+      render();
+    }
+  }
+
+  function selectSquare(squareStr) {
+    selected = squareStr;
+    legalTargets = Engine.legalMoves(state, squareStr);
+    render();
+  }
+
+  function clearSelection() {
+    selected = null;
+    legalTargets = [];
+  }
+
+  function coordAria(row, col) {
+    return sq(row, col);
+  }
+
+  function announceMove(mover, from, to, promotion) {
+    var label = mover === 'w' ? '백' : '흑';
+    var msg = label + '이(가) ' + from + '에서 ' + to + '으로 이동했습니다.';
+    if (promotion) msg += ' ' + PIECE_NAME_KO[promotion] + '(으)로 승진.';
+    liveRegion.textContent = msg;
+  }
+
+  // ---------- 프로모션 모달 ----------
+
+  function openPromoDialog() {
+    promoButtonsEl.innerHTML = '';
+    var color = pendingPromotion.color;
+    PROMO_ORDER.forEach(function (type) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'promo-btn';
+      var glyphSpan = document.createElement('span');
+      glyphSpan.className = 'piece-glyph ' + (color === 'w' ? 'white' : 'black');
+      glyphSpan.textContent = PIECE_GLYPH[type];
+      var labelSpan = document.createElement('span');
+      labelSpan.className = 'label';
+      labelSpan.textContent = PIECE_NAME_KO[type];
+      btn.appendChild(glyphSpan);
+      btn.appendChild(labelSpan);
+      btn.addEventListener('click', function () { resolvePromotion(type); });
+      promoButtonsEl.appendChild(btn);
+    });
+    promoOverlay.hidden = false;
+    promoButtonsEl.querySelector('.promo-btn').focus();
+  }
+
+  function resolvePromotion(type) {
+    var mover = state.turn;
+    var from = pendingPromotion.from, to = pendingPromotion.to;
+    var ok = Engine.play(state, from, to, type);
+    promoOverlay.hidden = true;
+    pendingPromotion = null;
+    if (ok) {
+      announceMove(mover, from, to, type);
+      clearSelection();
+      render();
+    }
+  }
+
+  promoOverlay.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      // 프로모션은 필수 선택 사항이므로 임의 취소 시 마지막 선택을 취소만 한다.
+      promoOverlay.hidden = true;
+      pendingPromotion = null;
+      clearSelection();
+      render();
+    }
+  });
+
+  // ---------- 렌더링 ----------
+
+  function render() {
+    var info = Engine.status(state);
+    var kingSquare = null;
+    if (info.inCheck) {
+      kingSquare = Engine.findKing(state.board, state.turn);
+    }
+
+    var legalSet = {};
+    legalTargets.forEach(function (m) { legalSet[m.to] = legalSet[m.to] || []; legalSet[m.to].push(m); });
+
+    for (var dr = 0; dr < 8; dr++) {
+      for (var dc = 0; dc < 8; dc++) {
+        var abs = displayToAbsolute(dr, dc);
+        var row = abs.row, col = abs.col;
+        var cell = cellEls[dr][dc];
+        var squareStr = sq(row, col);
+        var piece = state.board[row][col];
+
+        cell.innerHTML = '';
+        cell.classList.remove('selected', 'last-move', 'check-square');
+
+        var labelParts = [squareStr];
+
+        if (piece) {
+          var colorClass = piece[0] === 'w' ? 'white' : 'black';
+          var typeChar = piece[1];
+          var glyph = document.createElement('span');
+          glyph.className = 'piece-glyph ' + colorClass;
+          glyph.textContent = PIECE_GLYPH[typeChar];
+          cell.appendChild(glyph);
+          labelParts.push((piece[0] === 'w' ? '흰' : '검은') + ' ' + PIECE_NAME_KO[typeChar]);
+        }
+
+        if (legalSet[squareStr]) {
+          if (piece) {
+            var ring = document.createElement('span');
+            ring.className = 'capture-ring';
+            cell.appendChild(ring);
+            labelParts.push('잡기 가능');
+          } else {
+            var dot = document.createElement('span');
+            dot.className = 'move-dot';
+            cell.appendChild(dot);
+            labelParts.push('이동 가능');
+          }
+        }
+
+        if (selected === squareStr) {
+          cell.classList.add('selected');
+          labelParts.push('선택됨');
+        }
+
+        if (state.lastMove && (state.lastMove.from === squareStr || state.lastMove.to === squareStr)) {
+          cell.classList.add('last-move');
+        }
+
+        if (kingSquare === squareStr) {
+          cell.classList.add('check-square');
+          labelParts.push('체크');
+        }
+
+        cell.setAttribute('aria-label', labelParts.join(', '));
+      }
+    }
+
+    updateTabIndex();
+
+    // 차례/상태 표시
+    if (info.status === 'checkmate') {
+      turnSwatchEl.style.display = 'none';
+      var winnerLabel = info.winner === 'w' ? '백' : '흑';
+      turnTextEl.textContent = '체크메이트 — ' + winnerLabel + ' 승리';
+    } else if (info.status === 'stalemate') {
+      turnSwatchEl.style.display = 'none';
+      turnTextEl.textContent = '스테일메이트 — 무승부';
+    } else if (info.status === 'draw') {
+      turnSwatchEl.style.display = 'none';
+      turnTextEl.textContent = '무승부 (' + drawReasonKo(info.reason) + ')';
+    } else {
+      turnSwatchEl.style.display = '';
+      turnSwatchEl.className = 'turn-swatch ' + info.turn;
+      turnTextEl.textContent = (info.turn === 'w' ? '백' : '흑') + ' 차례' + (info.inCheck ? ' — 체크' : '');
+    }
+
+    noticeEl.classList.toggle('result', info.status !== 'playing');
+    if (info.status === 'checkmate') {
+      noticeEl.textContent = (info.winner === 'w' ? '백' : '흑') + '이(가) 체크메이트로 승리했습니다.';
+    } else if (info.status === 'stalemate') {
+      noticeEl.textContent = '둘 곳이 없어 스테일메이트로 무승부입니다.';
+    } else if (info.status === 'draw') {
+      noticeEl.textContent = drawReasonKo(info.reason) + '(으)로 무승부입니다.';
+    } else {
+      noticeEl.textContent = '';
+    }
+
+    undoBtn.disabled = state.history.length === 0 || !!pendingPromotion;
+
+    claimFiftyBtn.hidden = !info.canClaimFifty;
+    claimThreefoldBtn.hidden = !info.canClaimThreefold;
+
+    renderMoveLog();
+  }
+
+  function drawReasonKo(reason) {
+    switch (reason) {
+      case 'insufficient': return '기물 부족';
+      case '75move': return '75수 규칙';
+      case 'fivefold': return '5회 동형 반복';
+      case 'fifty-claimed': return '50수 규칙 선언';
+      case 'threefold-claimed': return '3회 동형 반복 선언';
+      default: return '무승부';
+    }
+  }
+
+  function renderMoveLog() {
+    moveLogEl.innerHTML = '';
+    var log = state.moveLog;
+    for (var i = 0; i < log.length; i += 2) {
+      var li = document.createElement('li');
+      var num = document.createElement('span');
+      num.className = 'move-log-num';
+      num.textContent = (i / 2 + 1) + '.';
+      li.appendChild(num);
+      var whiteSpan = document.createElement('span');
+      whiteSpan.textContent = log[i].notation;
+      li.appendChild(whiteSpan);
+      if (log[i + 1]) {
+        var blackSpan = document.createElement('span');
+        blackSpan.textContent = log[i + 1].notation;
+        li.appendChild(blackSpan);
+      }
+      moveLogEl.appendChild(li);
+    }
+    moveLogEl.scrollTop = moveLogEl.scrollHeight;
+  }
+
+  // ---------- 컨트롤 ----------
+
+  function requestNewGame() {
+    if (state.moveLog.length === 0) {
+      startNewGame();
+      return;
+    }
+    openDialog();
+  }
+
+  function startNewGame() {
+    state = Engine.createState();
+    clearSelection();
+    pendingPromotion = null;
+    promoOverlay.hidden = true;
+    focus = { dr: 0, dc: 0 };
+    render();
+  }
+
+  function openDialog() {
+    dialogOverlay.hidden = false;
+    dialogCancel.focus();
+  }
+
+  function closeDialog() {
+    dialogOverlay.hidden = true;
+  }
+
+  dialogCancel.addEventListener('click', closeDialog);
+  dialogConfirm.addEventListener('click', function () {
+    startNewGame();
+    closeDialog();
+  });
+  dialogOverlay.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeDialog();
+  });
+
+  undoBtn.addEventListener('click', function () {
+    if (pendingPromotion) return;
+    if (Engine.undo(state)) {
+      clearSelection();
+      render();
+    }
+  });
+
+  flipBtn.addEventListener('click', function () {
+    orientation = orientation === 'white' ? 'black' : 'white';
+    clearSelection();
+    buildLabels();
+    buildBoard();
+    render();
+  });
+
+  claimFiftyBtn.addEventListener('click', function () {
+    if (Engine.claimDraw(state, 'fifty')) {
+      clearSelection();
+      render();
+    }
+  });
+
+  claimThreefoldBtn.addEventListener('click', function () {
+    if (Engine.claimDraw(state, 'threefold')) {
+      clearSelection();
+      render();
+    }
+  });
+
+  newGameBtn.addEventListener('click', requestNewGame);
+
+  buildLabels();
+  buildBoard();
+  render();
+})();
+
+</script>
+</body>
+</html>
