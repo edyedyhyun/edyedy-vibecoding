@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>윷 한 판</title>
+<style>
+  :root {
+    --cream: #f4ead9;
+    --paper: #fbf3e7;
+    --wood: #8a5a34;
+    --wood-dark: #5e3b21;
+    --ink: #3a2a1e;
+    --teal: #1f7a72;
+    --teal-dark: #145b54;
+    --coral: #d1573f;
+    --coral-dark: #a53f2b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    font-size: 16px;
+  }
+  h1 { font-size: 1.5rem; margin: .2rem 0; }
+  .app {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  header { width: 100%; text-align: center; }
+  header p { margin: .1rem 0 .6rem; color: #6b5641; }
+  .boardWrap {
+    position: relative;
+    width: 100%;
+    max-width: 520px;
+    aspect-ratio: 1 / 1;
+    background: var(--paper);
+    border: 6px solid var(--wood);
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 2px var(--wood-dark);
+    margin: 0 auto;
+  }
+  #board { position: absolute; inset: 10px; }
+  .boardSvg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .ringLine { fill: none; stroke: var(--wood); stroke-width: 3; opacity: .6; }
+  .diagLine { stroke: var(--wood); stroke-width: 2; stroke-dasharray: 4 4; opacity: .5; }
+  .node {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #fff8ec;
+    border: 2px solid var(--wood);
+    cursor: pointer;
+    padding: 0;
+  }
+  .node:hover { background: #ffe9c7; }
+  .nodeCorner { width: 34px; height: 34px; background: #f2d9a8; }
+  .nodeCenter { width: 38px; height: 38px; background: #e8c98a; border-width: 3px; }
+  .nodeOut {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-size: .7rem;
+    color: #6b5641;
+    width: 44px;
+    text-align: center;
+  }
+  .tokenStack {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    min-width: 30px;
+    height: 30px;
+    padding: 0 4px;
+    border-radius: 15px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .75rem;
+    font-weight: bold;
+    pointer-events: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,.35);
+  }
+  .teamCheong, .teamCheongBg { background: var(--teal); }
+  .teamHong, .teamHongBg { background: var(--coral); }
+  .pieceBtnLayer {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 3px solid #333;
+    background: rgba(255,255,255,.4);
+    cursor: pointer;
+  }
+  .pieceSelected { border-color: #222; box-shadow: 0 0 0 3px gold; }
+  .previewMark {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 3px dashed #2a6;
+    pointer-events: none;
+  }
+  .side {
+    flex: 1;
+    min-width: 260px;
+    max-width: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .panel {
+    background: var(--paper);
+    border: 2px solid var(--wood);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .teamPill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    color: #fff;
+    font-weight: bold;
+  }
+  #sticks { display: flex; gap: 6px; margin: 8px 0; }
+  .stick {
+    width: 16px;
+    height: 56px;
+    border-radius: 6px;
+    border: 2px solid var(--wood-dark);
+  }
+  .stick.flat { background: #f6e6c8; }
+  .stick.round { background: #7a5030; }
+  #rollBtn, #undoBtn, #newGameBtn, #helpToggle {
+    font-size: 1rem;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 2px solid var(--wood-dark);
+    background: var(--wood);
+    color: #fff;
+    cursor: pointer;
+  }
+  #rollBtn:disabled { opacity: .5; cursor: not-allowed; }
+  .chip {
+    padding: 6px 10px;
+    margin: 3px;
+    border-radius: 8px;
+    border: 2px solid var(--teal-dark);
+    background: #eafaf6;
+    cursor: pointer;
+    font-size: .95rem;
+  }
+  .chipSelected { background: var(--teal); color: #fff; }
+  .reserveRow { margin: 2px 0; }
+  #instruction { font-weight: bold; }
+  #log {
+    max-height: 100px;
+    overflow-y: auto;
+    font-size: .85rem;
+    background: #fffaf0;
+    border: 1px solid #cbb68a;
+    border-radius: 6px;
+    padding: 6px;
+  }
+  #winnerBanner {
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-align: center;
+    padding: 8px;
+    background: gold;
+    border-radius: 8px;
+  }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  #helpBody { font-size: .9rem; line-height: 1.5; }
+  @media (max-width: 320px) {
+    .app { padding: 4px; }
+    .side { min-width: 0; }
+  }
+
+  .app { max-width: 930px; justify-content:center; align-items:flex-start; gap:14px; }
+  .boardWrap { width:500px; max-width:100%; margin:0; flex-shrink:0; }
+  .side { flex:0 1 330px; min-width:0; gap:8px; }
+  .panel { border:1px solid #cbb68a; padding:9px 12px; }
+  .reserveTray { display:flex; gap:5px; margin:5px 0; }
+  .reserveToken { padding:0; font-size:12px; white-space:nowrap; border:2px solid transparent; border-radius:50%; color:white; width:32px; height:32px; cursor:pointer; }
+  .reserveToken.chosen { border-color:#ffe082; box-shadow:0 0 0 2px #664; }
+  button:disabled { opacity:.5; cursor:default; }
+  .pieceBtnLayer { background:transparent; border-color:gold; }
+  .tokenStack { min-width:32px; font-size:12px; padding:0 3px; }
+  .previewMark { width:36px; height:36px; border:3px dashed var(--coral); background:#fce8a366; }
+  #moveBtn,.dialogBox button { border:0; border-radius:7px; background:var(--teal); color:white; padding:9px 12px; font:inherit; margin-top:6px; cursor:pointer; }
+  .stick { display:flex; align-items:center; justify-content:center; font-size:20px; color:#795334; }
+  .stick.unthrown { background:#d5cbb9; opacity:.35; }
+  .dialogOverlay { position:fixed; inset:0; background:#0007; display:flex; align-items:center; justify-content:center; z-index:20; }
+  .dialogOverlay[hidden] { display:none; }
+  .dialogBox { padding:24px; background:var(--paper); border-radius:14px; width:min(90vw,380px); }
+  @media(max-width:860px) { .side { flex-basis:500px; max-width:500px; width:100%; } }
+  @media(max-width:420px) { .node { width:20px;height:20px; } .nodeCorner { width:26px;height:26px; } .nodeCenter {width:28px;height:28px;} .tokenStack{height:26px;min-width:26px;font-size:10px;} .pieceBtnLayer{width:29px;height:29px;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>윷 한 판</h1>
+    <p>한 화면에서 함께하는 윷놀이 · <span class="teamPill teamCheongBg">청팀</span> vs <span class="teamPill teamHongBg">홍팀</span></p>
+  </header>
+
+  <div class="boardWrap">
+    <div id="board" aria-label="윷놀이 보드"></div>
+  </div>
+
+  <div class="side">
+    <div class="panel" id="winnerBanner" hidden></div>
+
+    <div class="panel">
+      <span id="teamLabel" class="teamPill teamCheongBg">청팀 차례</span>
+      <div id="sticks" aria-label="윷가락 네 개"></div>
+      <div id="lastResult">마지막 결과: 없음</div>
+      <button id="rollBtn" type="button">윷 던지기</button>
+    </div>
+
+    <div class="panel">
+      <div>결과 (개별 선택, 합산 없음)</div>
+      <div id="results" role="group" aria-label="던지기 결과 목록"></div>
+      <div id="instruction" aria-live="polite"></div><button id="moveBtn" type="button" disabled>선택한 말 이동</button>
+    </div>
+
+    <div class="panel">
+      <div id="reserve"></div>
+    </div>
+
+    <div class="panel actions">
+      <button id="undoBtn" type="button">한 단계 되돌리기</button>
+      <button id="newGameBtn" type="button">새 게임</button>
+    </div>
+
+    <div class="panel">
+      <button id="helpToggle" type="button" aria-expanded="false">규칙 보기 / 접기</button>
+      <div id="helpBody" hidden>
+        <p><strong>확률 모델 안내:</strong> 이 게임의 윷가락 던지기는 실제 윷가락의 물리적 확률을 측정한 것이 아니라,
+        네 개의 가락이 각각 독립적으로 50% 확률로 평평한 면 또는 둥근 면이 나온다고 가정한 단순화된 시뮬레이션입니다.
+        평평한 면 1개=도(1칸), 2개=개(2칸), 3개=걸(3칸), 4개=윷(4칸), 0개=모(5칸).</p>
+        <p><strong>하우스 룰:</strong></p>
+        <ul>
+          <li>빽도(뒤로 가기)와 낙(무효 처리) 규칙은 사용하지 않습니다. 모든 이동은 앞으로만 진행합니다.</li>
+          <li>모서리(우상단/좌상단) 지름길은 말이 그 모서리 칸에서 이동을 "시작"할 때만 자동으로 적용됩니다. 지나가기만 할 때는 적용되지 않습니다.</li>
+          <li>중앙 칸에서 이동을 시작하면 항상 우하단 방향 경로로 진행합니다.</li>
+          <li>윷/모가 나오면 이동하기 전에 반드시 한 번 더 던집니다. 결과는 모두 쌓아두고 순서와 상관없이 선택해 사용할 수 있습니다.</li>
+          <li>상대 말을 잡으면 그 칸의 상대 말 전체가 대기 상태로 돌아가며, 사용한 결과가 도/개/걸(1~3칸)일 때만 추가로 한 번 더 던질 수 있습니다 (윷/모는 이미 추가 던지기가 있으므로 중복 보너스 없음).</li>
+          <li>같은 팀 말이 같은 칸에 있으면 자동으로 묶여서 함께 이동하며, 묶음을 나눌 수 없습니다.</li>
+          <li>출구 칸(o20)을 지나 한 칸 더 이동하면 완주합니다. 정확히 출구 칸에 도착하면 아직 보드 위에 있는 것이고, 초과 이동도 완주로 처리됩니다.</li>
+          <li>한 팀의 말 4개가 모두 완주하면 그 팀이 승리합니다.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div>기록</div>
+      <div id="log" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
+<div id="resetDialog" class="dialogOverlay" hidden><div role="alertdialog" aria-modal="true" aria-labelledby="resetTitle" class="dialogBox"><h2 id="resetTitle">새 판을 시작할까요?</h2><p>진행 중인 판은 초기화됩니다.</p><button id="cancelReset">취소</button><button id="confirmReset">새 판 시작</button></div></div>
+<script>
+/*
+ * 윷 한 판 - 게임 엔진 (순수 함수/상태 머신, DOM 의존 없음)
+ *
+ * 보드 그래프: 외곽 20칸(o1~o20, 반시계 방향) + 대각선 지름길 8칸(a1,a2,a4,a5 / b1,b2,b4,b5) + 중앙(C) = 29개 노드.
+ *   - o5(우상단 모서리), o10(좌상단 모서리), o15(좌하단 모서리), o20(우하단 모서리/출구)
+ *   - "말이 그 모서리에서 이동을 시작할 때만" 지름길 사용: o5에서 시작 -> a1,a2,C,a4,a5,o15 (o15부터 다시 외곽)
+ *     o10에서 시작 -> b1,b2,C,b4,b5,o20 (o20 도착 후 다음 한 칸에 완주)
+ *   - 중앙(C)에서 말이 쉬고 있다가 새로 이동을 시작하면 항상 b4 방향(우하단, "B" 경로)으로 진행한다.
+ *   - 같은 이동(한 번의 이동) 안에서 지나가는 경우는 원래 경로 방향을 유지한다 (a2->C->a4 또는 b2->C->b4).
+ *
+ * 상태(state) 모양:
+ * {
+ *   turn: 'CHEONG' | 'HONG',
+ *   pieces: { CHEONG: [{pos}], HONG: [{pos}] },   // pos: 'OUT' | 노드id | 'FINISH', 4개씩
+ *   queue: [{value, label}],                       // 아직 사용하지 않은 던지기 결과들(순서 무관, 개별 선택)
+ *   canRoll: boolean,                               // 지금 (다시) 던질 수 있는지
+ *   pendingBonusExtraRoll: boolean,                 // 잡기로 얻은 보너스 던지기가 남아있는지
+ *   lastRoll: {flatCount, value, label} | null,
+ *   winner: 'CHEONG' | 'HONG' | null,
+ *   log: [string],
+ * }
+ *
+ * 공개 API:
+ *   createState()                         -> 새 게임 상태
+ *   roll(state, flatCount)                -> state (변형됨). flatCount: 0~4 (뒤집힌/평평한 면 개수)
+ *   moves(state, resultIndex)             -> 그 결과로 움직일 수 있는 pieceIndex 배열
+ *   move(state, resultIndex, pieceIndex)  -> boolean (성공 여부), state 변형
+ *   undo(state)                           -> boolean (되돌릴 수 있었는지), state 변형
+ *   NODE_POS                              -> {nodeId: {x,y}} 500x500 좌표 (렌더링용)
+ *   NODE_ORDER                             -> 노드 id 배열 (렌더링 순회용)
+ */
+(function (root, factory) {
+  var mod = factory();
+  if (typeof module === 'object' && module.exports) {
+    module.exports = mod;
+  }
+  root.YutEngine = mod;
+})(typeof window !== 'undefined' ? window : this, function () {
+  'use strict';
+
+  var FACE_BY_FLAT = {
+    1: { value: 1, label: '도' },
+    2: { value: 2, label: '개' },
+    3: { value: 3, label: '걸' },
+    4: { value: 4, label: '윷' },
+    0: { value: 5, label: '모' },
+  };
+
+  var RING = ['o1','o2','o3','o4','o5','o6','o7','o8','o9','o10',
+              'o11','o12','o13','o14','o15','o16','o17','o18','o19','o20'];
+
+  var NEXT_DEFAULT = { OUT: 'o1' };
+  for (var i = 0; i < RING.length; i++) {
+    NEXT_DEFAULT[RING[i]] = (i + 1 < RING.length) ? RING[i + 1] : 'FINISH';
+  }
+  NEXT_DEFAULT.a1 = 'a2';
+  NEXT_DEFAULT.a4 = 'a5';
+  NEXT_DEFAULT.a5 = 'o15';
+  NEXT_DEFAULT.b1 = 'b2';
+  NEXT_DEFAULT.b4 = 'b5';
+  NEXT_DEFAULT.b5 = 'o20';
+  NEXT_DEFAULT.FINISH = 'FINISH';
+
+  function lerp(p0, p1, t) {
+    return { x: p0.x + (p1.x - p0.x) * t, y: p0.y + (p1.y - p0.y) * t };
+  }
+
+  var CORNER = { o5: { x: 460, y: 40 }, o10: { x: 40, y: 40 }, o15: { x: 40, y: 460 }, o20: { x: 460, y: 460 } };
+  var NODE_POS = { OUT: { x: 500, y: 500 } };
+  var order = ['o1','o2','o3','o4'];
+  for (i = 0; i < 4; i++) NODE_POS[order[i]] = lerp({ x: 460, y: 460 }, CORNER.o5, (i + 1) / 5);
+  NODE_POS.o5 = CORNER.o5;
+  order = ['o6','o7','o8','o9'];
+  for (i = 0; i < 4; i++) NODE_POS[order[i]] = lerp(CORNER.o5, CORNER.o10, (i + 1) / 5);
+  NODE_POS.o10 = CORNER.o10;
+  order = ['o11','o12','o13','o14'];
+  for (i = 0; i < 4; i++) NODE_POS[order[i]] = lerp(CORNER.o10, CORNER.o15, (i + 1) / 5);
+  NODE_POS.o15 = CORNER.o15;
+  order = ['o16','o17','o18','o19'];
+  for (i = 0; i < 4; i++) NODE_POS[order[i]] = lerp(CORNER.o15, CORNER.o20, (i + 1) / 5);
+  NODE_POS.o20 = CORNER.o20;
+
+  NODE_POS.a1 = lerp(CORNER.o5, CORNER.o15, 1 / 6);
+  NODE_POS.a2 = lerp(CORNER.o5, CORNER.o15, 2 / 6);
+  NODE_POS.C = lerp(CORNER.o5, CORNER.o15, 3 / 6);
+  NODE_POS.a4 = lerp(CORNER.o5, CORNER.o15, 4 / 6);
+  NODE_POS.a5 = lerp(CORNER.o5, CORNER.o15, 5 / 6);
+
+  NODE_POS.b1 = lerp(CORNER.o10, CORNER.o20, 1 / 6);
+  NODE_POS.b2 = lerp(CORNER.o10, CORNER.o20, 2 / 6);
+  NODE_POS.b4 = lerp(CORNER.o10, CORNER.o20, 4 / 6);
+  NODE_POS.b5 = lerp(CORNER.o10, CORNER.o20, 5 / 6);
+
+  var NODE_ORDER = RING.concat(['a1','a2','a4','a5','b1','b2','b4','b5','C']);
+
+  function createState() {
+    return {
+      turn: 'CHEONG',
+      pieces: {
+        CHEONG: [0, 1, 2, 3].map(function () { return { pos: 'OUT' }; }),
+        HONG: [0, 1, 2, 3].map(function () { return { pos: 'OUT' }; }),
+      },
+      queue: [],
+      canRoll: true,
+      pendingBonusExtraRoll: false,
+      lastRoll: null,
+      winner: null,
+      log: [],
+      history: [],
+    };
+  }
+
+  function clone(state) {
+    return JSON.parse(JSON.stringify({
+      turn: state.turn, pieces: state.pieces, queue: state.queue,
+      canRoll: state.canRoll, pendingBonusExtraRoll: state.pendingBonusExtraRoll,
+      lastRoll: state.lastRoll, winner: state.winner, log: state.log,
+    }));
+  }
+
+  function pushHistory(state) {
+    state.history.push(clone(state));
+    if (state.history.length > 200) state.history.shift();
+  }
+
+  function teamName(t) { return t === 'CHEONG' ? '청팀' : '홍팀'; }
+  function otherTeam(t) { return t === 'CHEONG' ? 'HONG' : 'CHEONG'; }
+
+  function nextNode(path) {
+    var cur = path[path.length - 1];
+    var prev = path.length > 1 ? path[path.length - 2] : null;
+    if (cur === 'C') {
+      if (path.length === 1) return 'b4';
+      return prev === 'a2' ? 'a4' : 'b4';
+    }
+    if (cur === 'o5' && path.length === 1) return 'a1';
+    if (cur === 'o10' && path.length === 1) return 'b1';
+    if (cur === 'a2') return 'C';
+    if (cur === 'b2') return 'C';
+    return NEXT_DEFAULT[cur];
+  }
+
+  function computePath(startPos, steps) {
+    var path = [startPos === 'FINISH' ? 'FINISH' : startPos];
+    for (var s = 0; s < steps; s++) {
+      var cur = path[path.length - 1];
+      if (cur === 'FINISH') break;
+      path.push(nextNode(path));
+      if (path[path.length - 1] === 'FINISH') break;
+    }
+    return path;
+  }
+
+  function piecesAt(state, team, pos) {
+    var out = [];
+    state.pieces[team].forEach(function (p, idx) { if (p.pos === pos) out.push(idx); });
+    return out;
+  }
+
+  function roll(state, flatCount) {
+    if (state.winner) return state;
+    if (!state.canRoll || !Number.isInteger(flatCount) || flatCount < 0 || flatCount > 4) return state;
+    pushHistory(state);
+    var face = FACE_BY_FLAT[flatCount];
+    state.queue.push({ value: face.value, label: face.label });
+    state.lastRoll = { flatCount: flatCount, value: face.value, label: face.label };
+    state.log.push(teamName(state.turn) + ': ' + face.label + ' (' + face.value + '칸) 결과 추가');
+    state.pendingBonusExtraRoll = false;
+    state.canRoll = face.value >= 4;
+    return state;
+  }
+
+  function moves(state, resultIndex) {
+    if (state.winner) return [];
+    if (state.canRoll || !Number.isInteger(resultIndex) || resultIndex < 0 || resultIndex >= state.queue.length) return [];
+    var team = state.turn;
+    var out = [];
+    state.pieces[team].forEach(function (p, idx) { if (p.pos !== 'FINISH') out.push(idx); });
+    return out;
+  }
+
+  function move(state, resultIndex, pieceIndex) {
+    if (state.winner) return false;
+    if (state.canRoll || !Number.isInteger(resultIndex) || resultIndex < 0 || resultIndex >= state.queue.length || !Number.isInteger(pieceIndex)) return false;
+    var team = state.turn;
+    var piece = state.pieces[team][pieceIndex];
+    if (!piece || piece.pos === 'FINISH') return false;
+
+    pushHistory(state);
+    var chip = state.queue[resultIndex];
+    var startPos = piece.pos;
+    var path = computePath(startPos, chip.value);
+    var dest = path[path.length - 1];
+    var movingIdxs = startPos === 'OUT' ? [pieceIndex] : piecesAt(state, team, startPos);
+
+    state.queue.splice(resultIndex, 1);
+
+    if (dest === 'FINISH') {
+      movingIdxs.forEach(function (idx) { state.pieces[team][idx].pos = 'FINISH'; });
+      state.log.push(teamName(team) + ': ' + chip.label + '로 말 완주 (' + movingIdxs.length + '개)');
+      var allFinished = state.pieces[team].every(function (p) { return p.pos === 'FINISH'; });
+      if (allFinished) {
+        state.winner = team;
+        state.log.push(teamName(team) + ' 승리!');
+      }
+    } else {
+      var opp = otherTeam(team);
+      var oppAt = piecesAt(state, opp, dest);
+      movingIdxs.forEach(function (idx) { state.pieces[team][idx].pos = dest; });
+      state.log.push(teamName(team) + ': ' + chip.label + '로 이동 (' + movingIdxs.length + '개 말)');
+      if (oppAt.length > 0) {
+        oppAt.forEach(function (idx) { state.pieces[opp][idx].pos = 'OUT'; });
+        state.log.push(teamName(team) + '이(가) ' + teamName(opp) + ' 말 ' + oppAt.length + '개를 잡았다!');
+        if (chip.value >= 1 && chip.value <= 3) {
+          state.pendingBonusExtraRoll = true;
+        }
+      }
+    }
+
+    if (state.winner) {
+      state.canRoll = false;
+    } else if (state.pendingBonusExtraRoll) {
+      state.canRoll = true;
+    } else if (state.queue.length === 0) {
+      state.turn = otherTeam(team);
+      state.canRoll = true;
+    } else {
+      state.canRoll = false;
+    }
+    return true;
+  }
+
+  function undo(state) {
+    if (!state.history || state.history.length === 0) return false;
+    var prev = state.history.pop();
+    state.turn = prev.turn;
+    state.pieces = prev.pieces;
+    state.queue = prev.queue;
+    state.canRoll = prev.canRoll;
+    state.pendingBonusExtraRoll = prev.pendingBonusExtraRoll;
+    state.lastRoll = prev.lastRoll;
+    state.winner = prev.winner;
+    state.log = prev.log;
+    return true;
+  }
+
+  return {
+    createState: createState,
+    roll: roll,
+    moves: moves,
+    move: move,
+    undo: undo,
+    computePath: computePath,
+    NODE_POS: NODE_POS,
+    NODE_ORDER: NODE_ORDER,
+  };
+});
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var E = window.YutEngine;
+  var state = E.createState();
+  var selectedResult = null;
+  var selectedPiece = null;
+  var lastBits = [1, 1, 1, 1];
+
+  var boardEl = document.getElementById('board');
+  var teamLabelEl = document.getElementById('teamLabel');
+  var sticksEl = document.getElementById('sticks');
+  var lastResultEl = document.getElementById('lastResult');
+  var rollBtn = document.getElementById('rollBtn');
+  var resultsEl = document.getElementById('results');
+  var reserveEl = document.getElementById('reserve');
+  var instructionEl = document.getElementById('instruction');
+  var logEl = document.getElementById('log');
+  var undoBtn = document.getElementById('undoBtn');
+  var newGameBtn = document.getElementById('newGameBtn');
+  var winnerBanner = document.getElementById('winnerBanner');
+  var helpToggle = document.getElementById('helpToggle');
+  var helpBody = document.getElementById('helpBody');
+
+  function teamLabel(t) { return t === 'CHEONG' ? '청팀' : '홍팀'; }
+
+  function buildBoard() {
+    boardEl.innerHTML = '';
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 500 500');
+    svg.setAttribute('class', 'boardSvg');
+    var ring = ['o1','o2','o3','o4','o5','o6','o7','o8','o9','o10','o11','o12','o13','o14','o15','o16','o17','o18','o19','o20','o1'];
+    var pts = ring.map(function (id) { return E.NODE_POS[id].x + ',' + E.NODE_POS[id].y; }).join(' ');
+    var poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    poly.setAttribute('points', pts);
+    poly.setAttribute('class', 'ringLine');
+    svg.appendChild(poly);
+    [['o5', 'o15'], ['o10', 'o20']].forEach(function (pair) {
+      var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      var p0 = E.NODE_POS[pair[0]], p1 = E.NODE_POS[pair[1]];
+      line.setAttribute('x1', p0.x); line.setAttribute('y1', p0.y);
+      line.setAttribute('x2', p1.x); line.setAttribute('y2', p1.y);
+      line.setAttribute('class', 'diagLine');
+      svg.appendChild(line);
+    });
+    boardEl.appendChild(svg);
+
+    E.NODE_ORDER.forEach(function (id) {
+      var pos = E.NODE_POS[id];
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'node' + (id === 'C' ? ' nodeCenter' : /^o(5|10|15|20)$/.test(id) ? ' nodeCorner' : '');
+      btn.style.left = (pos.x / 5) + '%';
+      btn.style.top = (pos.y / 5) + '%';
+      btn.dataset.node = id;
+      btn.setAttribute('aria-label', nodeKoreanLabel(id) + ' 칸');
+      btn.addEventListener('click', function () { onNodeClick(id); });
+      boardEl.appendChild(btn);
+    });
+
+  }
+
+  function nodeKoreanLabel(id) {
+    if (id === 'C') return '중앙';
+    if (id === 'o5') return '우상단 모서리(o5)';
+    if (id === 'o10') return '좌상단 모서리(o10)';
+    if (id === 'o15') return '좌하단 모서리(o15)';
+    if (id === 'o20') return '우하단 모서리(o20, 출구)';
+    return id;
+  }
+
+  function renderPieces() {
+    boardEl.querySelectorAll('.tokenStack').forEach(function (n) { n.remove(); });
+    ['CHEONG', 'HONG'].forEach(function (team) {
+      var byPos = {};
+      state.pieces[team].forEach(function (p, idx) {
+        if (p.pos === 'OUT' || p.pos === 'FINISH') return;
+        byPos[p.pos] = byPos[p.pos] || [];
+        byPos[p.pos].push(idx);
+      });
+      Object.keys(byPos).forEach(function (pos) {
+        var idxs = byPos[pos];
+        var el = document.createElement('div');
+        el.className = 'tokenStack ' + (team === 'CHEONG' ? 'teamCheong' : 'teamHong');
+        var p = E.NODE_POS[pos];
+        el.style.left = (p.x / 5) + '%';
+        el.style.top = (p.y / 5) + '%';
+        el.textContent = (team === 'CHEONG' ? '청' : '홍') + idxs.map(function(i){ return i + 1; }).join('+');
+        boardEl.appendChild(el);
+      });
+    });
+  }
+
+  function renderSticks(bits) {
+    sticksEl.innerHTML = '';
+    bits.forEach(function (b) {
+      var s = document.createElement('div');
+      s.className = 'stick ' + (b === null ? 'unthrown' : b ? 'flat' : 'round');
+      s.setAttribute('aria-label', b === null ? '던지기 전' : b ? '평평한 면' : '둥근 면');
+      s.textContent = b === 1 ? '×' : '';
+      s.setAttribute('role', 'img');
+      sticksEl.appendChild(s);
+    });
+  }
+
+  function renderResults() {
+    resultsEl.innerHTML = '';
+    state.queue.forEach(function (chip, idx) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.disabled = state.canRoll || !!state.winner;
+      b.className = 'chip' + (idx === selectedResult ? ' chipSelected' : '');
+      b.textContent = chip.label + '(' + chip.value + ')';
+      b.setAttribute('aria-label', chip.label + ' 결과, ' + chip.value + '칸 이동');
+      b.addEventListener('click', function () {
+        selectedResult = (selectedResult === idx) ? null : idx;
+        selectedPiece = null;
+        render();
+      });
+      resultsEl.appendChild(b);
+    });
+  }
+
+  function renderReserve() {
+    reserveEl.innerHTML = '';
+    ['CHEONG', 'HONG'].forEach(function (team) {
+      var out = state.pieces[team].filter(function (p) { return p.pos === 'OUT'; }).length;
+      var fin = state.pieces[team].filter(function (p) { return p.pos === 'FINISH'; }).length;
+      var row = document.createElement('div');
+      row.className = 'reserveRow';
+      row.textContent = teamLabel(team) + ' - 대기 ' + out + ' / 완주 ' + fin + ' / 4';
+      reserveEl.appendChild(row);
+      var tray = document.createElement('div'); tray.className = 'reserveTray';
+      state.pieces[team].forEach(function(p,idx){
+        if(p.pos !== 'OUT') return;
+        var b = document.createElement('button'); b.type='button';
+        b.textContent=(team === 'CHEONG' ? '청' : '홍')+(idx+1);
+        b.className='reserveToken '+(team==='CHEONG'?'teamCheong':'teamHong')+(selectedPiece===idx&&state.turn===team?' chosen':'');
+        b.setAttribute('aria-label',teamLabel(team)+' '+(idx+1)+'번 말 대기');
+        b.disabled=team!==state.turn||selectedResult===null||state.canRoll||!!state.winner;
+        b.addEventListener('click',function(){selectedPiece=idx;render();});tray.appendChild(b);
+      }); reserveEl.appendChild(tray);
+    });
+  }
+
+  function renderPieceButtons() {
+    boardEl.querySelectorAll('.pieceBtnLayer').forEach(function (n) { n.remove(); });
+    if (selectedResult === null || state.winner) return;
+    var team = state.turn;
+    var choices = E.moves(state, selectedResult);
+    var seen = {};
+    choices.forEach(function (idx) {
+      var p = state.pieces[team][idx];
+      if(p.pos === 'OUT') return;
+      var key = p.pos + '|' + team;
+      if (seen[key]) return;
+      seen[key] = true;
+      var pos = E.NODE_POS[p.pos] || E.NODE_POS.OUT;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pieceBtnLayer pieceSelectBtn' + (selectedPiece === idx ? ' pieceSelected' : '');
+      btn.style.left = (pos.x / 5) + '%';
+      btn.style.top = (pos.y / 5) + '%';
+      var stackCount = state.pieces[team].filter(function (q) { return q.pos === p.pos; }).length;
+      btn.setAttribute('aria-label', teamLabel(team) + ' 말 (' + nodeKoreanLabel(p.pos === 'OUT' ? 'OUT' : p.pos) + ', ' + stackCount + '개 묶음) 선택');
+      btn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        selectedPiece = idx;
+        render();
+      });
+      boardEl.appendChild(btn);
+    });
+  }
+
+  function renderPreview() {
+    boardEl.querySelectorAll('.previewMark').forEach(function (n) { n.remove(); });
+    if (selectedResult === null || selectedPiece === null || state.winner) return;
+    var chip = state.queue[selectedResult];
+    if (!chip) return;
+    var piece = state.pieces[state.turn][selectedPiece];
+    if (!piece) return;
+    var path = E.computePath(piece.pos, chip.value);
+    var dest = path[path.length - 1];
+    if (dest === 'FINISH') return;
+    var pos = E.NODE_POS[dest];
+    var mark = document.createElement('div');
+    mark.className = 'previewMark';
+    mark.style.left = (pos.x / 5) + '%';
+    mark.style.top = (pos.y / 5) + '%';
+    boardEl.appendChild(mark);
+  }
+
+  function onNodeClick(nodeId) {
+    if (selectedResult === null || state.winner) return;
+    var team = state.turn;
+    var choices = E.moves(state, selectedResult);
+    var match = choices.find(function (idx) { return state.pieces[team][idx].pos === nodeId; });
+    if (match !== undefined) {
+      selectedPiece = match;
+      render();
+    }
+  }
+
+  function doMove(resultIndex, pieceIndex) {
+    var ok = E.move(state, resultIndex, pieceIndex);
+    if (ok) {
+      selectedResult = null;
+      selectedPiece = null;
+    }
+    render();
+  }
+
+  function doRoll() {
+    if (!state.canRoll || state.winner) return;
+    var bits = [0, 0, 0, 0].map(function () { return Math.random() < 0.5 ? 1 : 0; });
+    var flatCount = bits.reduce(function (a, b) { return a + b; }, 0);
+    E.roll(state, flatCount);
+    state.lastRoll.bits = bits;
+    selectedResult = null; selectedPiece = null;
+    render();
+  }
+
+  function updateInstruction() {
+    if (state.winner) {
+      instructionEl.textContent = teamLabel(state.winner) + ' 승리! 새 게임을 시작하세요.';
+      return;
+    }
+    if (state.canRoll && state.queue.length === 0) {
+      instructionEl.textContent = teamLabel(state.turn) + '의 차례입니다. 윷을 던지세요.';
+    } else if (state.canRoll) {
+      instructionEl.textContent = '추가 던지기를 먼저 마친 뒤 결과와 말을 고르세요.';
+    } else if (selectedResult === null) {
+      instructionEl.textContent = '이동할 결과를 먼저 선택하세요.';
+    } else if (selectedPiece === null) {
+      instructionEl.textContent = '판 위 말이나 대기 말을 고르세요.';
+    } else {
+      instructionEl.textContent = '도착할 칸을 확인하고 ‘선택한 말 이동’을 누르세요.';
+    }
+  }
+
+  function renderLog() {
+    logEl.innerHTML = state.log.slice(-50).reverse().map(function (l) {
+      return '<div>' + escapeHtml(l) + '</div>';
+    }).join('');
+  }
+
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function render() {
+    teamLabelEl.textContent = teamLabel(state.turn) + ' 차례';
+    teamLabelEl.className = state.turn === 'CHEONG' ? 'teamPill teamCheongBg' : 'teamPill teamHongBg';
+    renderSticks(state.lastRoll ? (state.lastRoll.bits || [0,1,2,3].map(function(i){return i < state.lastRoll.flatCount ? 1 : 0;})) : [null,null,null,null]);
+    document.getElementById('moveBtn').disabled = state.canRoll || selectedResult === null || selectedPiece === null || !!state.winner;
+    lastResultEl.textContent = state.lastRoll ? ('마지막 결과: ' + state.lastRoll.label + ' (' + state.lastRoll.value + '칸)') : '마지막 결과: 없음';
+    rollBtn.disabled = !state.canRoll || !!state.winner;
+    renderResults();
+    renderReserve();
+    renderPieces();
+    renderPieceButtons();
+    renderPreview();
+    updateInstruction();
+    renderLog();
+    undoBtn.disabled = !state.history || state.history.length === 0;
+    winnerBanner.hidden = !state.winner;
+    winnerBanner.textContent = state.winner ? (teamLabel(state.winner) + ' 승리!') : '';
+  }
+
+  rollBtn.addEventListener('click', doRoll);
+  undoBtn.addEventListener('click', function () {
+    if (E.undo(state)) {
+      selectedResult = null;
+      selectedPiece = null;
+      render();
+    }
+  });
+  document.getElementById('moveBtn').addEventListener('click',function(){doMove(selectedResult,selectedPiece);});
+  var resetDialog=document.getElementById('resetDialog');
+  newGameBtn.addEventListener('click',function(){resetDialog.hidden=false;document.getElementById('cancelReset').focus();});
+  document.getElementById('cancelReset').addEventListener('click',function(){resetDialog.hidden=true;newGameBtn.focus();});
+  document.getElementById('confirmReset').addEventListener('click',function(){state=E.createState();selectedResult=null;selectedPiece=null;resetDialog.hidden=true;render();rollBtn.focus();});
+  resetDialog.addEventListener('keydown',function(e){if(e.key==='Escape'){resetDialog.hidden=true;newGameBtn.focus();}});
+  helpToggle.addEventListener('click', function () {
+    var expanded = helpToggle.getAttribute('aria-expanded') === 'true';
+    helpToggle.setAttribute('aria-expanded', String(!expanded));
+    helpBody.hidden = expanded;
+  });
+
+  buildBoard();
+  render();
+})();
+
+</script>
+</body>
+</html>
