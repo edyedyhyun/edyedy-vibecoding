@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>장기 한 판</title>
+<style>
+:root{--ink:#3b2a1a;--cho:#1f4f9c;--han:#b3261e;--paper:#fbf6ea;--line:#dccbb0}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);background:radial-gradient(circle at 30% 0,#f8f0e0,#eadcc2);
+  font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.5}
+header{text-align:center;padding:14px 10px 2px}
+h1{margin:0;font-size:1.7rem;letter-spacing:.08em}
+.sub{margin:2px 0 0;font-size:.85rem;color:#7a624a}
+.stage{display:grid;grid-template-columns:480px 280px;gap:20px;justify-content:center;align-items:start;padding:12px}
+@media(max-width:820px){.stage{grid-template-columns:minmax(0,480px)}}
+.board-wrap{width:100%;max-width:480px;flex:none}
+.board{position:relative;width:100%;aspect-ratio:480/540;container-type:inline-size;
+  filter:drop-shadow(0 6px 10px rgba(70,40,10,.3))}
+.board svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pt{position:absolute;width:10.8%;aspect-ratio:1/1;transform:translate(-50%,-50%);border:0;padding:0;
+  background:transparent;border-radius:50%;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.pt:focus-visible{outline:3px solid #111;outline-offset:2px}
+.sh{position:absolute;inset:0;filter:drop-shadow(0 2px 2px rgba(50,28,8,.5))}
+.tok{position:absolute;inset:0;background:var(--edge);
+  clip-path:polygon(29% 0,71% 0,100% 29%,100% 71%,71% 100%,29% 100%,0 71%,0 29%)}
+.tok::before{content:"";position:absolute;inset:7%;
+  clip-path:polygon(29% 0,71% 0,100% 29%,100% 71%,71% 100%,29% 100%,0 71%,0 29%);
+  background:linear-gradient(145deg,#fffaf0,#efe0bb)}
+.tok.cho{--edge:var(--cho);color:var(--cho)}
+.tok.han{--edge:var(--han);color:var(--han)}
+.ch{position:absolute;inset:0;display:grid;place-items:center;z-index:1;font-weight:900;line-height:1;
+  font-size:24px;font-size:6.6cqw;font-family:"Noto Serif KR","Batang","AppleMyungjo",serif}
+.tok.tK .ch{font-size:7.2cqw}
+.pt.last{box-shadow:0 0 0 3px rgba(255,190,40,.65)}
+.pt.sel{box-shadow:0 0 0 4px #f5a300,0 0 10px 4px rgba(245,163,0,.5)}
+.pt.checked .sh{filter:drop-shadow(0 0 7px #e11) drop-shadow(0 0 3px #e11)}
+.pt.dest::after{content:"";position:absolute;left:50%;top:50%;width:38%;height:38%;transform:translate(-50%,-50%);
+  border-radius:50%;background:#1b8a4c;box-shadow:0 0 0 3px rgba(255,255,255,.85);z-index:2}
+.pt.dest.cap::after{width:104%;height:104%;background:transparent;border:4px solid #d32020;box-shadow:0 0 0 2px rgba(255,255,255,.8)}
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(80,50,20,.12)}
+.card h2{margin:0 0 6px;font-size:.95rem}
+.status{font-weight:800;font-size:1.05rem;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:#fff}
+.status.cho{border-color:var(--cho);color:var(--cho)}
+.status.han{border-color:var(--han);color:var(--han)}
+.status.end{border-color:#444;background:#ffe9a8;color:#222}
+.small{font-size:.85rem;margin:0}
+#msg{min-height:1.3em;color:#a03a00;font-size:.85rem}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+button.act{font:inherit;font-size:.9rem;padding:8px 6px;border:1px solid #b99a6a;border-radius:8px;background:#f3e2bd;color:var(--ink);cursor:pointer;min-height:38px}
+button.act:hover:not(:disabled){background:#ecd29b}
+button.act:disabled{opacity:.45;cursor:not-allowed}
+button.act:focus-visible{outline:3px solid #111;outline-offset:1px}
+button.danger{background:#f6d5cf;border-color:#c98a80}
+#confirm{margin-top:8px;padding:8px;border:2px solid #c98a80;border-radius:8px;background:#fff3f0}
+#confirm .btns{margin-top:6px}
+.setup{display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 6px;align-items:center;font-size:.85rem}
+.setup select{font:inherit;padding:3px;border-radius:6px;border:1px solid #b99a6a;background:#fff;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px;min-height:28px}
+.chip{display:inline-grid;place-items:center;min-width:26px;height:26px;border-radius:6px;border:2px solid;background:#fffaf0;font-weight:900}
+.chip.cho{color:var(--cho);border-color:var(--cho)}
+.chip.han{color:var(--han);border-color:var(--han)}
+.none{color:#9a8468;font-size:.8rem}
+.logbox{max-height:200px;overflow:auto}
+#log{margin:0;padding:0;list-style:none;font-size:.85rem}
+#log li{padding:1px 4px;border-left:4px solid}
+#log li.cho{border-color:var(--cho)}
+#log li.han{border-color:var(--han)}
+details.help{font-size:.85rem}
+details.help summary{cursor:pointer;font-weight:700}
+details.help ul{margin:6px 0 0;padding-left:18px}
+footer{text-align:center;font-size:.75rem;color:#8a7358;padding:4px 10px 18px}
+</style>
+</head>
+<body>
+<header>
+  <h1>장기 한 판</h1>
+  <p class="sub">한 화면에서 둘이 번갈아 두는 오프라인 장기 · 초(파랑, 아래)가 먼저</p>
+</header>
+<main class="stage">
+  <section class="board-wrap" aria-label="장기판">
+    <div id="board" class="board"></div>
+  </section>
+  <aside class="side">
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <div class="card">
+      <p id="selinfo" class="small"></p>
+      <p id="msg" class="small" role="status" aria-live="polite"></p>
+    </div>
+    <div class="card">
+      <div class="btns">
+        <button id="btn-undo" class="act" type="button">무르기</button>
+        <button id="btn-pass" class="act" type="button">한 수 쉼</button>
+        <button id="btn-bikjang" class="act" type="button">빅장 수락</button>
+        <button id="btn-draw" class="act" type="button">무승부 합의</button>
+        <button id="btn-resign" class="act danger" type="button">기권</button>
+        <button id="btn-new" class="act" type="button">새 게임</button>
+      </div>
+      <div id="confirm" role="alertdialog" aria-labelledby="confirm-text" hidden>
+        <div id="confirm-text" class="small"></div>
+        <div class="btns">
+          <button id="confirm-yes" class="act danger" type="button">확인</button>
+          <button id="confirm-no" class="act" type="button">취소</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>초기 배치 (마·상 순서)</h2>
+      <div class="setup">
+        <span></span><span>왼쪽</span><span>오른쪽</span>
+        <span>초(아래)</span>
+        <select id="setup-cho-left" aria-label="초 왼쪽 배치"><option value="HE">마·상</option><option value="EH">상·마</option></select>
+        <select id="setup-cho-right" aria-label="초 오른쪽 배치"><option value="EH">상·마</option><option value="HE">마·상</option></select>
+        <span>한(위)</span>
+        <select id="setup-han-left" aria-label="한 왼쪽 배치"><option value="HE">마·상</option><option value="EH">상·마</option></select>
+        <select id="setup-han-right" aria-label="한 오른쪽 배치"><option value="EH">상·마</option><option value="HE">마·상</option></select>
+      </div>
+      <p id="setup-note" class="small"></p>
+    </div>
+    <div class="card">
+      <h2>잡은 기물</h2>
+      <p class="small">초가 잡음</p>
+      <div id="cap-cho" class="chips"></div>
+      <p class="small">한이 잡음</p>
+      <div id="cap-han" class="chips"></div>
+    </div>
+    <div class="card">
+      <h2>기보</h2>
+      <div class="logbox"><ol id="log"></ol></div>
+      <p id="log-empty" class="none">아직 둔 수가 없습니다.</p>
+    </div>
+    <details class="card help">
+      <summary>사용법과 규칙</summary>
+      <ul>
+        <li>기물을 누르면 이동 가능한 칸이 표시됩니다: 초록 점은 이동, 붉은 고리는 잡기. 도착 칸을 누르면 둡니다. 방향키로 칸을 옮길 수 있습니다.</li>
+        <li>좌표는 A~I(왼쪽→오른쪽), 10~1(위→아래)입니다.</li>
+        <li>장군은 피해야 하며, 장군을 못 피하면 외통으로 집니다. 왕을 직접 잡지는 않습니다.</li>
+        <li>빅장(두 왕이 마주 봄): 차례인 쪽은 '빅장 수락'으로 무승부를 내거나, 마주 봄을 풀어야 합니다(장군과 동시여도 수락 가능).</li>
+        <li>한 수 쉼은 장군·빅장이 아닐 때만 가능하고, 연속 두 번 쉬면 무승부입니다(이 프로그램의 캐주얼 규칙).</li>
+        <li>같은 수의 반복에 대한 자동 판정은 없습니다. 필요하면 '무승부 합의'를 쓰세요.</li>
+        <li>점수 계산, 시간 제한, 컴퓨터 상대는 없습니다.</li>
+      </ul>
+    </details>
+  </aside>
+</main>
+<footer>초 = 파랑 · 아래 / 한 = 빨강 · 위</footer>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
