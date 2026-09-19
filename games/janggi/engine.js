@@ -14,6 +14,10 @@
     cho: { K: '초', A: '사', H: '마', E: '상', R: '차', C: '포', P: '졸' },
     han: { K: '한', A: '사', H: '마', E: '상', R: '차', C: '포', P: '병' }
   };
+  var PIECE_GLYPH = {
+    cho: { K: '楚', A: '士', H: '馬', E: '象', R: '車', C: '包', P: '卒' },
+    han: { K: '漢', A: '士', H: '馬', E: '象', R: '車', C: '包', P: '兵' }
+  };
   var ORTH = [[-1, 0], [1, 0], [0, -1], [0, 1]];
   var DIAG = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
 
@@ -386,7 +390,7 @@
   }
 
   return {
-    ROWS: ROWS, COLS: COLS, SIDE_NAME: SIDE_NAME, PIECE_NAME: PIECE_NAME,
+    ROWS: ROWS, COLS: COLS, SIDE_NAME: SIDE_NAME, PIECE_NAME: PIECE_NAME, PIECE_GLYPH: PIECE_GLYPH,
     other: other, label: label, cloneBoard: cloneBoard,
     createState: createState, createEmptyState: createEmptyState, setSetup: setSetup,
     pseudoMoves: pseudoMoves, pseudoAttacks: pseudoAttacks, legalMoves: legalMoves,

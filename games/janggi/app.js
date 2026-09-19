@@ -154,7 +154,7 @@
   function chips(list, side) {
     if (!list.length) return '<span class="none">없음</span>';
     return list.map(function (t) {
-      return '<span class="chip ' + side + '">' + E.PIECE_NAME[side][t] + '</span>';
+      return '<span class="chip ' + side + '">' + E.PIECE_GLYPH[side][t] + '</span>';
     }).join('');
   }
 
@@ -181,7 +181,7 @@
       b.setAttribute('aria-label', lab);
       b.tabIndex = (cursor.r === r && cursor.c === c) ? 0 : -1;
       b.innerHTML = p
-        ? '<span class="sh"><span class="tok ' + p.side + ' t' + p.type + '"><span class="ch">' + E.PIECE_NAME[p.side][p.type] + '</span></span></span>'
+        ? '<span class="sh"><span class="tok ' + p.side + ' t' + p.type + '"><span class="ch">' + E.PIECE_GLYPH[p.side][p.type] + '</span></span></span>'
         : '';
     }
 

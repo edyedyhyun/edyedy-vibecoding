@@ -162,6 +162,10 @@ footer{text-align:center;font-size:.75rem;color:#8a7358;padding:4px 10px 18px}
     cho: { K: '초', A: '사', H: '마', E: '상', R: '차', C: '포', P: '졸' },
     han: { K: '한', A: '사', H: '마', E: '상', R: '차', C: '포', P: '병' }
   };
+  var PIECE_GLYPH = {
+    cho: { K: '楚', A: '士', H: '馬', E: '象', R: '車', C: '包', P: '卒' },
+    han: { K: '漢', A: '士', H: '馬', E: '象', R: '車', C: '包', P: '兵' }
+  };
   var ORTH = [[-1, 0], [1, 0], [0, -1], [0, 1]];
   var DIAG = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
 
@@ -534,7 +538,7 @@ footer{text-align:center;font-size:.75rem;color:#8a7358;padding:4px 10px 18px}
   }
 
   return {
-    ROWS: ROWS, COLS: COLS, SIDE_NAME: SIDE_NAME, PIECE_NAME: PIECE_NAME,
+    ROWS: ROWS, COLS: COLS, SIDE_NAME: SIDE_NAME, PIECE_NAME: PIECE_NAME, PIECE_GLYPH: PIECE_GLYPH,
     other: other, label: label, cloneBoard: cloneBoard,
     createState: createState, createEmptyState: createEmptyState, setSetup: setSetup,
     pseudoMoves: pseudoMoves, pseudoAttacks: pseudoAttacks, legalMoves: legalMoves,
@@ -702,7 +706,7 @@ footer{text-align:center;font-size:.75rem;color:#8a7358;padding:4px 10px 18px}
   function chips(list, side) {
     if (!list.length) return '<span class="none">없음</span>';
     return list.map(function (t) {
-      return '<span class="chip ' + side + '">' + E.PIECE_NAME[side][t] + '</span>';
+      return '<span class="chip ' + side + '">' + E.PIECE_GLYPH[side][t] + '</span>';
     }).join('');
   }
 
@@ -729,7 +733,7 @@ footer{text-align:center;font-size:.75rem;color:#8a7358;padding:4px 10px 18px}
       b.setAttribute('aria-label', lab);
       b.tabIndex = (cursor.r === r && cursor.c === c) ? 0 : -1;
       b.innerHTML = p
-        ? '<span class="sh"><span class="tok ' + p.side + ' t' + p.type + '"><span class="ch">' + E.PIECE_NAME[p.side][p.type] + '</span></span></span>'
+        ? '<span class="sh"><span class="tok ' + p.side + ' t' + p.type + '"><span class="ch">' + E.PIECE_GLYPH[p.side][p.type] + '</span></span></span>'
         : '';
     }
 
