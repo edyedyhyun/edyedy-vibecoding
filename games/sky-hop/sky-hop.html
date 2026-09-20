@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>구름새 · Sky Hop</title>
+<style>
+  :root {
+    --mint: #cdeee3; --cream: #fff6e4; --navy: #1d2b4f; --navy-soft: #3c4a70;
+    --coral: #ef7a62; --teal: #2a9d8f; --panel: rgba(255, 250, 238, .94);
+    --w: min(100vw - 24px, 460px, calc((100vh - 210px) * .7));
+  }
+  @supports (height: 100dvh) { :root { --w: min(100vw - 24px, 460px, calc((100dvh - 210px) * .7)); } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: linear-gradient(#e6f6ef, var(--cream)); color: var(--navy);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", -apple-system, sans-serif;
+    overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+  body { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center;
+    padding: 10px 12px 14px; gap: 8px; }
+  h1 { margin: 0; font-size: 1.3rem; letter-spacing: .02em; }
+  h1 small { font-weight: 600; color: var(--navy-soft); font-size: .8em; }
+  .hud { width: var(--w); min-width: 240px; display: flex; align-items: center; gap: 8px; }
+  .stat { flex: 1; background: var(--panel); border: 2px solid var(--navy); border-radius: 12px; padding: 4px 10px;
+    display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; }
+  .stat span:first-child { font-size: .78rem; color: var(--navy-soft); }
+  .stat output { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+  button { font: inherit; font-weight: 700; cursor: pointer; border: 2px solid var(--navy); color: var(--navy);
+    background: var(--cream); border-radius: 12px; padding: 8px 14px; min-height: 40px; }
+  button:hover { background: #fff; }
+  button:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+  button.primary { background: var(--coral); color: #fff; border-color: var(--navy); }
+  button.primary:hover { background: #e56a51; }
+  .stage { position: relative; width: var(--w); min-width: 240px; aspect-ratio: 7 / 10; border: 3px solid var(--navy);
+    border-radius: 18px; overflow: hidden; background: var(--mint); box-shadow: 0 8px 24px rgba(29, 43, 79, .18); }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+  .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; text-align: center; padding: 16px; }
+  .overlay[hidden] { display: none; }
+  .overlay.hint { justify-content: flex-end; padding-bottom: 96px; pointer-events: none; }
+  .overlay.modal { background: rgba(29, 43, 79, .45); }
+  .card { background: var(--panel); border: 2px solid var(--navy); border-radius: 18px; padding: 16px 20px;
+    display: flex; flex-direction: column; gap: 8px; align-items: center; min-width: 210px; max-width: 90%; }
+  .card h2 { margin: 0; font-size: 1.3rem; }
+  .card p { margin: 0; color: var(--navy-soft); font-size: .95rem; }
+  .card .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .pill { background: var(--panel); border: 2px solid var(--navy); border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: .95rem; }
+  .status, .help, .card p, .pill { word-break: keep-all; overflow-wrap: break-word; }
+  .status { width: var(--w); min-width: 240px; margin: 0; text-align: center; font-weight: 700; min-height: 1.4em; }
+  .help { width: var(--w); min-width: 240px; margin: 0; text-align: center; font-size: .82rem; color: var(--navy-soft); line-height: 1.5; }
+  kbd { background: var(--panel); border: 1px solid var(--navy-soft); border-radius: 5px; padding: 0 5px; font-size: .9em; }
+</style>
+</head>
+<body>
+  <h1>구름새 <small>· Sky Hop</small></h1>
+
+  <div class="hud">
+    <div class="stat"><span>점수</span><output id="score" aria-label="점수">0</output></div>
+    <div class="stat"><span>최고</span><output id="best" aria-label="최고 점수">0</output></div>
+    <button id="pauseBtn" type="button" aria-label="일시정지">⏸ 정지</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="game" width="420" height="600" role="img" aria-label="구름새 게임 화면. 스페이스, 위쪽 화살표, 클릭 또는 터치로 날갯짓해 문 사이 틈을 통과하세요."></canvas>
+
+    <div class="overlay hint" id="readyOverlay"><span class="pill">스페이스 · ↑ · 클릭 · 터치로 시작</span></div>
+
+    <div class="overlay modal" id="pauseOverlay" hidden>
+      <div class="card">
+        <h2>일시정지</h2>
+        <p>준비되면 ‘계속하기’를 누르세요.</p>
+        <div class="row">
+          <button id="resumeBtn" class="primary" type="button">계속하기 (P)</button>
+          <button id="restartFromPauseBtn" type="button">다시 시작 (R)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay modal" id="overOverlay" hidden>
+      <div class="card">
+        <h2>게임 오버</h2>
+        <p id="overText"></p>
+        <button id="restartBtn" class="primary" type="button">다시 하기 (R)</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+  <p class="help">
+    <kbd>Space</kbd> / <kbd>↑</kbd> / 클릭 / 터치: 날갯짓 · <kbd>P</kbd> 또는 <kbd>Esc</kbd>: 일시정지·재개 · <kbd>R</kbd> 또는 <kbd>Enter</kbd>: 게임 오버 후 다시 하기
+  </p>
+
+<script>
+/**
+ * SkyHopEngine — 구름새 · Sky Hop 의 순수 게임 로직.
+ * DOM 의존성이 없으며 CommonJS(module.exports)와 브라우저 전역(SkyHopEngine) 양쪽에서 쓸 수 있습니다.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.SkyHopEngine = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // ---- 튜닝 상수 (단위: 논리 픽셀, 초) ---------------------------------
+  var WIDTH = 420;
+  var HEIGHT = 600;
+  var GROUND_H = 56;
+  var GROUND_Y = HEIGHT - GROUND_H;   // 바닥 윗면
+
+  var GRAVITY = 1500;         // px/s² 아래로 당기는 힘
+  var FLAP_VELOCITY = -430;   // px/s 날갯짓 한 번의 위쪽 속도 (한 번에 약 62px 상승)
+  var MAX_FALL_SPEED = 640;   // px/s 낙하 속도 상한
+
+  var SCROLL_SPEED = 115;     // px/s 시작 속도 (느긋하게)
+  var SPEED_PER_POINT = 2;    // 점수 1점당 늘어나는 속도
+  var SPEED_BONUS_MAX = 45;   // 속도 증가 상한
+
+  var GATE_WIDTH = 64;
+  var GATE_GAP = 200;         // 위·아래 문 사이 틈 (넉넉하게 시작)
+  var GATE_SPACING = 235;     // 문과 문 사이 가로 간격
+  var GAP_MARGIN = 64;        // 틈 가장자리와 천장/바닥 사이 최소 여유
+  var FIRST_GATE_X = WIDTH + 10;
+
+  var BIRD_X = 118;
+  var BIRD_HIT_RADIUS = 11;   // 충돌 반지름 (그려진 몸통보다 약간 작아 관대함)
+  var BIRD_DRAW_RADIUS = 14;
+  var BIRD_START_Y = 280;
+
+  var MAX_FRAME_DT = 0.1;     // 한 프레임에서 인정하는 최대 시간 (탭 복귀 등)
+  var SUBSTEP_DT = 1 / 60;    // 물리 하위 단계 최대 길이
+  var RESUME_COUNTDOWN = 0.9; // 재개 후 물리가 다시 시작되기까지의 준비 시간
+
+  var STATUS = { READY: 'ready', PLAYING: 'playing', PAUSED: 'paused', GAMEOVER: 'gameover' };
+
+  // ---- 순수 헬퍼 -------------------------------------------------------
+
+  /** 틈 중심 y 의 허용 범위 [min, max]. */
+  function gapCenterRange() {
+    return { min: GAP_MARGIN + GATE_GAP / 2, max: GROUND_Y - GAP_MARGIN - GATE_GAP / 2 };
+  }
+
+  /** rng() ∈ [0,1) 로 안전한 틈 중심 y 를 뽑습니다. 범위를 벗어난 rng 값도 clamp 합니다. */
+  function randomGapCenter(rng) {
+    var r = gapCenterRange();
+    var u = Math.min(Math.max(Number(rng()) || 0, 0), 1);
+    return r.min + u * (r.max - r.min);
+  }
+
+  /** 원(cx,cy,r)과 사각형이 겹치는지 검사합니다. 닿기만 해도(경계 포함) 충돌. */
+  function circleRectHit(cx, cy, r, rx, ry, rw, rh) {
+    var nx = Math.min(Math.max(cx, rx), rx + rw);
+    var ny = Math.min(Math.max(cy, ry), ry + rh);
+    var dx = cx - nx, dy = cy - ny;
+    return dx * dx + dy * dy <= r * r;
+  }
+
+  function makeGate(s, x) {
+    return { id: s.gateSeq++, x: x, gapY: randomGapCenter(s.rng), scored: false };
+  }
+
+  function currentSpeed(state) {
+    return SCROLL_SPEED + Math.min(state.score * SPEED_PER_POINT, SPEED_BONUS_MAX);
+  }
+
+  // ---- 상태 -------------------------------------------------------------
+
+  function createState(opts) {
+    opts = opts || {};
+    var s = {
+      rng: opts.rng || Math.random,
+      best: Math.max(0, Math.floor(opts.best) || 0)
+    };
+    reset(s);
+    return s;
+  }
+
+  /** 최고 기록과 rng 는 유지하고 나머지를 전부 새 판으로 되돌립니다. */
+  function reset(s) {
+    s.status = STATUS.READY;
+    s.score = 0;
+    s.runStartBest = s.best;   // 이번 판을 시작할 때의 최고 기록 (newBest 판정 기준)
+    s.newBest = false;
+    s.deathReason = null;
+    s.elapsed = 0;          // 플레이 중 흐른 시간
+    s.idleTime = 0;         // 대기 화면 애니메이션용
+    s.scroll = 0;           // 바닥/배경 스크롤 누적 거리
+    s.countdown = 0;
+    s.acc = 0;
+    s.bird = { x: BIRD_X, y: BIRD_START_Y, vy: 0 };
+    s.gateSeq = 0;
+    s.gates = [makeGate(s, FIRST_GATE_X)];
+    fillGates(s);
+    return s;
+  }
+
+  function fillGates(s) {
+    var last = s.gates[s.gates.length - 1];
+    while (last.x + GATE_SPACING < WIDTH + GATE_WIDTH + GATE_SPACING) {
+      last = makeGate(s, last.x + GATE_SPACING);
+      s.gates.push(last);
+    }
+  }
+
+  // ---- 입력 ------------------------------------------------------------
+
+  /** 날갯짓. 대기 상태에서는 게임을 시작하면서 곧바로 날갯짓합니다. */
+  function flap(s) {
+    if (s.status === STATUS.READY) s.status = STATUS.PLAYING;
+    if (s.status !== STATUS.PLAYING || s.countdown > 0) return false;
+    s.bird.vy = FLAP_VELOCITY;
+    return true;
+  }
+
+  function pause(s) {
+    if (s.status !== STATUS.PLAYING) return false;
+    s.status = STATUS.PAUSED;
+    return true;
+  }
+
+  function resume(s) {
+    if (s.status !== STATUS.PAUSED) return false;
+    s.status = STATUS.PLAYING;
+    s.countdown = RESUME_COUNTDOWN;
+    s.acc = 0;
+    return true;
+  }
+
+  // ---- 시뮬레이션 --------------------------------------------------------
+
+  /** 점수가 오르는 즉시 최고 기록을 갱신합니다. newBest 는 판 시작 때의 기록을 넘었는지로 정합니다. */
+  function recordBest(s) {
+    if (s.score > s.best) s.best = s.score;
+    s.newBest = s.score > s.runStartBest;
+  }
+
+  function gameOver(s, reason) {
+    s.status = STATUS.GAMEOVER;
+    s.deathReason = reason;
+  }
+
+  function birdHitsGate(s, g) {
+    var b = s.bird, top = g.gapY - GATE_GAP / 2, bottom = g.gapY + GATE_GAP / 2;
+    return circleRectHit(b.x, b.y, BIRD_HIT_RADIUS, g.x, -1000, GATE_WIDTH, top + 1000) ||
+           circleRectHit(b.x, b.y, BIRD_HIT_RADIUS, g.x, bottom, GATE_WIDTH, GROUND_Y - bottom + 1000);
+  }
+
+  function simulate(s, dt) {
+    var b = s.bird;
+    // 등가속 운동의 정확한 적분 → 프레임 길이에 거의 무관한 결과
+    var vy0 = b.vy;
+    var vy1 = Math.min(vy0 + GRAVITY * dt, MAX_FALL_SPEED);
+    var tAcc = (vy1 - vy0) / GRAVITY;                 // 가속이 실제로 적용된 시간
+    b.y += vy0 * tAcc + 0.5 * GRAVITY * tAcc * tAcc + vy1 * (dt - tAcc);
+    b.vy = vy1;
+
+    var dx = currentSpeed(s) * dt;
+    s.scroll += dx;
+    s.elapsed += dt;
+    for (var i = 0; i < s.gates.length; i++) s.gates[i].x -= dx;
+
+    if (b.y - BIRD_HIT_RADIUS < 0) { b.y = BIRD_HIT_RADIUS; if (b.vy < 0) b.vy = 0; } // 천장은 막기만 함
+
+    for (i = 0; i < s.gates.length; i++) {
+      var g = s.gates[i];
+      if (birdHitsGate(s, g)) { gameOver(s, 'gate'); return; }
+      if (!g.scored && g.x + GATE_WIDTH < b.x) { g.scored = true; s.score++; recordBest(s); }
+    }
+    if (b.y + BIRD_HIT_RADIUS >= GROUND_Y) {
+      b.y = GROUND_Y - BIRD_HIT_RADIUS;
+      gameOver(s, 'ground');
+      return;
+    }
+    while (s.gates.length && s.gates[0].x + GATE_WIDTH < -20) s.gates.shift();
+    fillGates(s);
+  }
+
+  /** 프레임 시간 dt(초)만큼 진행. dt 는 [0, MAX_FRAME_DT] 로 제한되고 하위 단계로 쪼개집니다. */
+  function step(s, dt) {
+    dt = Number(dt);
+    if (!(dt > 0)) return;
+    dt = Math.min(dt, MAX_FRAME_DT);
+
+    if (s.status === STATUS.READY) {
+      s.idleTime += dt;
+      s.scroll += SCROLL_SPEED * dt;
+      s.bird.y = BIRD_START_Y + Math.sin(s.idleTime * 4) * 7;
+      return;
+    }
+    if (s.status !== STATUS.PLAYING) return; // 일시정지·게임오버는 완전 정지
+
+    if (s.countdown > 0) {
+      var used = Math.min(dt, s.countdown);
+      s.countdown -= used;
+      dt -= used;
+      if (s.countdown <= 1e-9) s.countdown = 0;
+      if (dt <= 0) return;
+    }
+    var n = Math.ceil(dt / SUBSTEP_DT - 1e-9);
+    var h = dt / n;
+    for (var i = 0; i < n && s.status === STATUS.PLAYING; i++) simulate(s, h);
+  }
+
+  return {
+    WIDTH: WIDTH, HEIGHT: HEIGHT, GROUND_H: GROUND_H, GROUND_Y: GROUND_Y,
+    GRAVITY: GRAVITY, FLAP_VELOCITY: FLAP_VELOCITY, MAX_FALL_SPEED: MAX_FALL_SPEED,
+    SCROLL_SPEED: SCROLL_SPEED, SPEED_PER_POINT: SPEED_PER_POINT, SPEED_BONUS_MAX: SPEED_BONUS_MAX,
+    GATE_WIDTH: GATE_WIDTH, GATE_GAP: GATE_GAP, GATE_SPACING: GATE_SPACING, GAP_MARGIN: GAP_MARGIN,
+    FIRST_GATE_X: FIRST_GATE_X, BIRD_X: BIRD_X, BIRD_HIT_RADIUS: BIRD_HIT_RADIUS,
+    BIRD_DRAW_RADIUS: BIRD_DRAW_RADIUS, BIRD_START_Y: BIRD_START_Y,
+    MAX_FRAME_DT: MAX_FRAME_DT, SUBSTEP_DT: SUBSTEP_DT, RESUME_COUNTDOWN: RESUME_COUNTDOWN,
+    STATUS: STATUS,
+    gapCenterRange: gapCenterRange, randomGapCenter: randomGapCenter, circleRectHit: circleRectHit,
+    currentSpeed: currentSpeed, createState: createState, reset: reset,
+    flap: flap, pause: pause, resume: resume, step: step
+  };
+});
+
+</script>
+<script>
+/* 구름새 · Sky Hop — 화면, 입력, 렌더링. 게임 규칙은 SkyHopEngine 에 있습니다. */
+(function () {
+  'use strict';
+  var E = SkyHopEngine;
+  var W = E.WIDTH, H = E.HEIGHT;
+  var NAVY = '#1d2b4f', CREAM = '#fff6e4', CORAL = '#ef7a62', TEAL = '#2a9d8f';
+  var BEST_KEY = 'skyhop.best.v1';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var canvas = $('game'), ctx = canvas.getContext('2d');
+  var scoreEl = $('score'), bestEl = $('best'), statusEl = $('status');
+  var readyOv = $('readyOverlay'), pauseOv = $('pauseOverlay'), overOv = $('overOverlay'), overText = $('overText');
+  var pauseBtn = $('pauseBtn');
+
+  // ---- 최고 기록 저장 (저장소가 막혀 있어도 게임은 계속) -------------------
+  function loadBest() {
+    try { return Math.max(0, parseInt(localStorage.getItem(BEST_KEY), 10) || 0); } catch (e) { return 0; }
+  }
+  function saveBest(v) { try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) { /* 무시 */ } }
+
+  var state = E.createState({ best: loadBest() });
+  var savedBest = state.best;
+  // 최고 기록이 오른 즉시 저장 — 일시정지 후 재시작하거나 탭을 닫아도 남는다.
+  function persistBest() {
+    if (state.best > savedBest) { savedBest = state.best; saveBest(savedBest); }
+  }
+  var shownStatus = null, wing = 0;
+
+  // ---- 상태 표시 -----------------------------------------------------------
+  function syncUI() {
+    scoreEl.textContent = state.score;
+    bestEl.textContent = state.best;
+    persistBest();
+    readyOv.hidden = state.status !== 'ready';
+    pauseOv.hidden = state.status !== 'paused';
+    overOv.hidden = state.status !== 'gameover';
+    pauseBtn.disabled = state.status !== 'playing';
+    if (shownStatus === state.status) return;
+    shownStatus = state.status;
+    var msg = {
+      ready: '준비됐어요. 스페이스나 클릭으로 시작!',
+      playing: '플레이 중',
+      paused: '일시정지됨. 계속하기 버튼이나 P 키로 재개하세요.',
+      gameover: '게임 오버. 점수 ' + state.score + '점, 최고 ' + state.best + '점.'
+    }[state.status];
+    statusEl.textContent = msg;
+    if (state.status === 'gameover') {
+      overText.textContent = '점수 ' + state.score + ' · 최고 ' + state.best + (state.newBest ? ' — 새 기록!' : '');
+    }
+  }
+
+  // ---- 동작 ----------------------------------------------------------------
+  function doFlap() {
+    if (state.status !== 'ready' && state.status !== 'playing') return;
+    if (E.flap(state)) wing = 1;
+    syncUI();
+  }
+  function doPause() { if (E.pause(state)) syncUI(); }
+  function doResume() { if (E.resume(state)) syncUI(); }
+  function doRestart() {
+    if (state.status !== 'gameover' && state.status !== 'paused') return;
+    E.reset(state);
+    shownStatus = null;
+    syncUI();
+  }
+  function togglePause() { if (state.status === 'playing') doPause(); else if (state.status === 'paused') doResume(); }
+
+  // ---- 입력 ----------------------------------------------------------------
+  var held = {};   // 키를 뗄 때까지 다시 눌린 것으로 치지 않는다 (반복 입력 방지)
+  var FLAP_KEYS = { Space: 1, ArrowUp: 1, KeyW: 1 };
+
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var c = e.code;
+    if (c === 'Space' || c === 'ArrowUp') e.preventDefault(); // 스크롤·버튼 활성화 방지
+    if (e.repeat || held[c]) return;
+    held[c] = true;
+    if (FLAP_KEYS[c]) doFlap();
+    else if (c === 'KeyP' || c === 'Escape') togglePause();
+    else if (c === 'KeyR' || (c === 'Enter' && e.target.tagName !== 'BUTTON')) doRestart();
+  });
+  document.addEventListener('keyup', function (e) {
+    held[e.code] = false;
+    if (e.code === 'Space') e.preventDefault();
+  });
+  window.addEventListener('blur', function () { held = {}; doPause(); });
+  document.addEventListener('visibilitychange', function () { held = {}; if (document.hidden) doPause(); });
+
+  canvas.addEventListener('pointerdown', function (e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    doFlap();
+  });
+  canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  pauseBtn.addEventListener('click', function () { doPause(); pauseBtn.blur(); });
+  $('resumeBtn').addEventListener('click', doResume);
+  $('restartBtn').addEventListener('click', doRestart);
+  $('restartFromPauseBtn').addEventListener('click', doRestart);
+
+  // ---- 캔버스 크기 (DPR 대응) ------------------------------------------------
+  var scale = 1;
+  function resize() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 3);
+    var cssW = canvas.clientWidth || W;
+    var px = Math.max(1, Math.round(cssW * dpr));
+    if (canvas.width !== px) { canvas.width = px; canvas.height = Math.round(px * H / W); }
+    scale = canvas.width / W;
+  }
+  window.addEventListener('resize', resize);
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas);
+
+  // ---- 그리기 ---------------------------------------------------------------
+  var clouds = [];
+  (function () {
+    var seed = 7;
+    function r() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    for (var i = 0; i < 6; i++) clouds.push({ x: r() * W, y: 40 + r() * 260, s: 0.7 + r() * 0.8, k: 0.12 + r() * 0.12 });
+  })();
+
+  function rr(x, y, w, h, tl, tr, br, bl) {
+    ctx.beginPath();
+    ctx.moveTo(x + tl, y); ctx.lineTo(x + w - tr, y); ctx.arcTo(x + w, y, x + w, y + tr, tr);
+    ctx.lineTo(x + w, y + h - br); ctx.arcTo(x + w, y + h, x + w - br, y + h, br);
+    ctx.lineTo(x + bl, y + h); ctx.arcTo(x, y + h, x, y + h - bl, bl);
+    ctx.lineTo(x, y + tl); ctx.arcTo(x, y, x + tl, y, tl); ctx.closePath();
+  }
+
+  function drawSky(s) {
+    var g = ctx.createLinearGradient(0, 0, 0, E.GROUND_Y);
+    g.addColorStop(0, '#bfe9dc'); g.addColorStop(1, CREAM);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,246,228,.9)';
+    ctx.beginPath(); ctx.arc(330, 96, 34, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.75)';
+    clouds.forEach(function (c) {
+      var x = ((c.x - s.scroll * c.k) % (W + 160) + (W + 160)) % (W + 160) - 80;
+      ctx.beginPath();
+      ctx.arc(x, c.y, 20 * c.s, 0, 7); ctx.arc(x + 22 * c.s, c.y + 5 * c.s, 16 * c.s, 0, 7);
+      ctx.arc(x - 22 * c.s, c.y + 6 * c.s, 14 * c.s, 0, 7); ctx.fill();
+    });
+    // 멀리 있는 언덕 두 겹
+    [[0.25, 'rgba(60,74,112,.20)', 70, 0.012], [0.5, 'rgba(29,43,79,.28)', 42, 0.02]].forEach(function (l) {
+      ctx.fillStyle = l[1]; ctx.beginPath(); ctx.moveTo(0, E.GROUND_Y);
+      for (var x = 0; x <= W; x += 6) {
+        ctx.lineTo(x, E.GROUND_Y - 30 - l[2] * 0.5 * (1 + Math.sin((x + s.scroll * l[0]) * l[3] + l[2])));
+      }
+      ctx.lineTo(W, E.GROUND_Y); ctx.fill();
+    });
+  }
+
+  function drawGate(g) {
+    var top = g.gapY - E.GATE_GAP / 2, bot = g.gapY + E.GATE_GAP / 2;
+    var col = g.id % 2 ? TEAL : CORAL, dark = g.id % 2 ? '#1f7a6f' : '#d2604a';
+    ctx.lineWidth = 3; ctx.strokeStyle = NAVY; ctx.fillStyle = col;
+    rr(g.x, -30, E.GATE_WIDTH, top + 30, 0, 0, 16, 16); ctx.fill(); ctx.stroke();
+    rr(g.x, bot, E.GATE_WIDTH, E.GROUND_Y - bot + 10, 16, 16, 0, 0); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = dark;   // 틈 쪽 끝의 띠
+    rr(g.x + 3, top - 20, E.GATE_WIDTH - 6, 14, 0, 0, 8, 8); ctx.fill();
+    rr(g.x + 3, bot + 6, E.GATE_WIDTH - 6, 14, 8, 8, 0, 0); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.28)';   // 왼쪽 하이라이트
+    rr(g.x + 9, -30, 7, top - 28, 3, 3, 3, 3); ctx.fill();
+    rr(g.x + 9, bot + 26, 7, E.GROUND_Y - bot - 22, 3, 3, 3, 3); ctx.fill();
+  }
+
+  function drawGround(s) {
+    ctx.fillStyle = NAVY; ctx.fillRect(0, E.GROUND_Y, W, E.GROUND_H);
+    ctx.fillStyle = '#3c4a70'; ctx.fillRect(0, E.GROUND_Y, W, 6);
+    ctx.fillStyle = 'rgba(205,238,227,.55)';
+    var off = -(s.scroll % 40);
+    for (var x = off; x < W; x += 40) { rr(x, E.GROUND_Y + 22, 22, 6, 3, 3, 3, 3); ctx.fill(); }
+  }
+
+  function drawBird(s) {
+    var b = s.bird, r = E.BIRD_DRAW_RADIUS;
+    var tilt = s.status === 'ready' ? 0 : Math.max(-0.45, Math.min(1.0, b.vy / 520));
+    var flapAngle = Math.sin(s.idleTime * 12 + s.elapsed * 22) * 0.5 - 0.1 + wing * 0.6;
+    ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(tilt);
+    ctx.lineWidth = 2.5; ctx.strokeStyle = NAVY; ctx.lineJoin = 'round';
+    ctx.fillStyle = TEAL;   // 꼬리
+    ctx.beginPath(); ctx.moveTo(-r + 3, -2); ctx.lineTo(-r - 9, -8); ctx.lineTo(-r - 7, 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = CORAL;  // 부리
+    ctx.beginPath(); ctx.moveTo(r - 2, -3); ctx.lineTo(r + 9, 2); ctx.lineTo(r - 2, 6); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fffaf0';  // 몸통
+    ctx.beginPath(); ctx.ellipse(0, 0, r + 1, r - 1, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#cdeee3';  // 배
+    ctx.beginPath(); ctx.ellipse(1, 5, r - 5, 5, 0, 0, 7); ctx.fill();
+    ctx.save(); ctx.translate(-3, 1); ctx.rotate(flapAngle);   // 날개
+    ctx.fillStyle = NAVY; ctx.beginPath(); ctx.ellipse(-3, 0, 9, 5, 0, 0, 7); ctx.fill(); ctx.restore();
+    ctx.fillStyle = NAVY; ctx.beginPath(); ctx.arc(6, -5, 2.6, 0, 7); ctx.fill();   // 눈
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(6.8, -5.8, 0.9, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawText(txt, x, y, size) {
+    ctx.font = '800 ' + size + 'px "Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 6; ctx.strokeStyle = CREAM; ctx.lineJoin = 'round'; ctx.strokeText(txt, x, y);
+    ctx.fillStyle = NAVY; ctx.fillText(txt, x, y);
+  }
+
+  function draw() {
+    var s = state;
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    drawSky(s);
+    for (var i = 0; i < s.gates.length; i++) drawGate(s.gates[i]);
+    drawGround(s);
+    drawBird(s);
+    if (s.status !== 'ready') drawText(String(s.score), W / 2, 70, 52);
+    if (s.status === 'playing' && s.countdown > 0) drawText(String(Math.ceil(s.countdown / (E.RESUME_COUNTDOWN / 3))), W / 2, 220, 64);
+  }
+
+  // ---- 메인 루프 ---------------------------------------------------------------
+  var last = null;
+  function frame(t) {
+    var dt = last == null ? 0 : (t - last) / 1000;
+    last = t;
+    wing = Math.max(0, wing - dt * 5);
+    var was = state.status;
+    E.step(state, dt);
+    if (state.status !== was) syncUI();
+    else if (scoreEl.textContent !== String(state.score)) {
+      scoreEl.textContent = state.score;
+      bestEl.textContent = state.best;
+      persistBest();
+    }
+    draw();
+    requestAnimationFrame(frame);
+  }
+  document.addEventListener('visibilitychange', function () { last = null; });
+
+  resize();
+  syncUI();
+  requestAnimationFrame(frame);
+
+  // 테스트/디버깅용 노출
+  window.__skyHop = { state: state };
+})();
+
+</script>
+</body>
+</html>

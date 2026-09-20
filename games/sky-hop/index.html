@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>구름새 · Sky Hop</title>
+<style>
+  :root {
+    --mint: #cdeee3; --cream: #fff6e4; --navy: #1d2b4f; --navy-soft: #3c4a70;
+    --coral: #ef7a62; --teal: #2a9d8f; --panel: rgba(255, 250, 238, .94);
+    --w: min(100vw - 24px, 460px, calc((100vh - 210px) * .7));
+  }
+  @supports (height: 100dvh) { :root { --w: min(100vw - 24px, 460px, calc((100dvh - 210px) * .7)); } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: linear-gradient(#e6f6ef, var(--cream)); color: var(--navy);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", -apple-system, sans-serif;
+    overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+  body { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center;
+    padding: 10px 12px 14px; gap: 8px; }
+  h1 { margin: 0; font-size: 1.3rem; letter-spacing: .02em; }
+  h1 small { font-weight: 600; color: var(--navy-soft); font-size: .8em; }
+  .hud { width: var(--w); min-width: 240px; display: flex; align-items: center; gap: 8px; }
+  .stat { flex: 1; background: var(--panel); border: 2px solid var(--navy); border-radius: 12px; padding: 4px 10px;
+    display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; }
+  .stat span:first-child { font-size: .78rem; color: var(--navy-soft); }
+  .stat output { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+  button { font: inherit; font-weight: 700; cursor: pointer; border: 2px solid var(--navy); color: var(--navy);
+    background: var(--cream); border-radius: 12px; padding: 8px 14px; min-height: 40px; }
+  button:hover { background: #fff; }
+  button:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+  button.primary { background: var(--coral); color: #fff; border-color: var(--navy); }
+  button.primary:hover { background: #e56a51; }
+  .stage { position: relative; width: var(--w); min-width: 240px; aspect-ratio: 7 / 10; border: 3px solid var(--navy);
+    border-radius: 18px; overflow: hidden; background: var(--mint); box-shadow: 0 8px 24px rgba(29, 43, 79, .18); }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+  .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; text-align: center; padding: 16px; }
+  .overlay[hidden] { display: none; }
+  .overlay.hint { justify-content: flex-end; padding-bottom: 96px; pointer-events: none; }
+  .overlay.modal { background: rgba(29, 43, 79, .45); }
+  .card { background: var(--panel); border: 2px solid var(--navy); border-radius: 18px; padding: 16px 20px;
+    display: flex; flex-direction: column; gap: 8px; align-items: center; min-width: 210px; max-width: 90%; }
+  .card h2 { margin: 0; font-size: 1.3rem; }
+  .card p { margin: 0; color: var(--navy-soft); font-size: .95rem; }
+  .card .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .pill { background: var(--panel); border: 2px solid var(--navy); border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: .95rem; }
+  .status, .help, .card p, .pill { word-break: keep-all; overflow-wrap: break-word; }
+  .status { width: var(--w); min-width: 240px; margin: 0; text-align: center; font-weight: 700; min-height: 1.4em; }
+  .help { width: var(--w); min-width: 240px; margin: 0; text-align: center; font-size: .82rem; color: var(--navy-soft); line-height: 1.5; }
+  kbd { background: var(--panel); border: 1px solid var(--navy-soft); border-radius: 5px; padding: 0 5px; font-size: .9em; }
+</style>
+</head>
+<body>
+  <h1>구름새 <small>· Sky Hop</small></h1>
+
+  <div class="hud">
+    <div class="stat"><span>점수</span><output id="score" aria-label="점수">0</output></div>
+    <div class="stat"><span>최고</span><output id="best" aria-label="최고 점수">0</output></div>
+    <button id="pauseBtn" type="button" aria-label="일시정지">⏸ 정지</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="game" width="420" height="600" role="img" aria-label="구름새 게임 화면. 스페이스, 위쪽 화살표, 클릭 또는 터치로 날갯짓해 문 사이 틈을 통과하세요."></canvas>
+
+    <div class="overlay hint" id="readyOverlay"><span class="pill">스페이스 · ↑ · 클릭 · 터치로 시작</span></div>
+
+    <div class="overlay modal" id="pauseOverlay" hidden>
+      <div class="card">
+        <h2>일시정지</h2>
+        <p>준비되면 ‘계속하기’를 누르세요.</p>
+        <div class="row">
+          <button id="resumeBtn" class="primary" type="button">계속하기 (P)</button>
+          <button id="restartFromPauseBtn" type="button">다시 시작 (R)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay modal" id="overOverlay" hidden>
+      <div class="card">
+        <h2>게임 오버</h2>
+        <p id="overText"></p>
+        <button id="restartBtn" class="primary" type="button">다시 하기 (R)</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+  <p class="help">
+    <kbd>Space</kbd> / <kbd>↑</kbd> / 클릭 / 터치: 날갯짓 · <kbd>P</kbd> 또는 <kbd>Esc</kbd>: 일시정지·재개 · <kbd>R</kbd> 또는 <kbd>Enter</kbd>: 게임 오버 후 다시 하기
+  </p>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
