@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>오늘도 무사히 · 똥피하기</title>
+<style>
+  :root {
+    --cream: #fff6e4; --sky: #fff1d6; --navy: #1d2b4f; --navy-soft: #4a5679;
+    --coral: #ef7a62; --coral-dark: #d9614a; --teal: #2a9d8f; --teal-dark: #1f7d72;
+    --panel: rgba(255, 250, 238, .95);
+    --w: min(100vw - 20px, 480px, calc((100vh - 250px) * .8));
+  }
+  @supports (height: 100dvh) { :root { --w: min(100vw - 20px, 480px, calc((100dvh - 250px) * .8)); } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: linear-gradient(#fff1d6, #fffaf0 70%); color: var(--navy);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", -apple-system, sans-serif;
+    overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+  body { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center;
+    padding: 8px 10px 12px; gap: 8px; }
+  h1 { margin: 0; font-size: 1.2rem; letter-spacing: .01em; text-align: center; word-break: keep-all; }
+  h1 small { font-weight: 600; color: var(--coral-dark); font-size: .85em; }
+  .hud, .stage, .controls, .hint { width: var(--w); min-width: 280px; }
+  .hud { display: flex; align-items: stretch; gap: 6px; }
+  .stat { flex: 1; min-width: 0; background: var(--panel); border: 2px solid var(--navy); border-radius: 12px; padding: 3px 8px;
+    display: flex; flex-direction: column; line-height: 1.2; }
+  .stat span { font-size: .68rem; font-weight: 700; color: var(--navy-soft); }
+  .stat output { font-size: 1rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  button { font: inherit; font-weight: 800; cursor: pointer; border: 2px solid var(--navy); color: var(--navy);
+    background: var(--cream); border-radius: 12px; padding: 8px 14px; min-height: 40px; touch-action: manipulation; }
+  button:hover:not(:disabled) { background: #fff; }
+  button:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: var(--coral); color: #fff; box-shadow: 0 3px 0 var(--navy); }
+  button.primary:hover:not(:disabled) { background: var(--coral-dark); }
+  button.primary:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--navy); }
+  button.link { border: 0; background: none; min-height: 32px; padding: 4px 8px; font-size: .82rem; font-weight: 700;
+    color: var(--navy-soft); text-decoration: underline; }
+  #pauseBtn { flex: 0 0 46px; padding: 0; font-size: 1.1rem; }
+  .stage { position: relative; aspect-ratio: 4 / 5; border: 3px solid var(--navy); border-radius: 18px; overflow: hidden;
+    background: var(--sky); box-shadow: 0 8px 24px rgba(29, 43, 79, .18); }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; text-align: center;
+    background: rgba(29, 43, 79, .38); }
+  .overlay[hidden] { display: none; }
+  .card { background: var(--panel); border: 2px solid var(--navy); border-radius: 18px; padding: 14px 18px; max-width: 100%;
+    display: flex; flex-direction: column; gap: 8px; align-items: center; min-width: 220px; }
+  .card h2 { margin: 0; font-size: 1.35rem; }
+  .card p { margin: 0; color: var(--navy-soft); font-size: .92rem; line-height: 1.45; word-break: keep-all; overflow-wrap: break-word; }
+  .card .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .badge { display: inline-block; background: var(--teal); color: #fff; border-radius: 999px; padding: 2px 12px; font-weight: 800; font-size: .85rem; }
+  .badge[hidden] { display: none; }
+  .controls { display: flex; gap: 10px; }
+  .hold { flex: 1; min-height: 68px; font-size: 1.15rem; background: var(--cream); user-select: none; -webkit-user-select: none;
+    touch-action: none; -webkit-touch-callout: none; box-shadow: 0 4px 0 var(--navy); }
+  .hold.on { background: var(--teal); color: #fff; transform: translateY(3px); box-shadow: 0 1px 0 var(--navy); }
+  .hint { margin: 0; text-align: center; font-size: .82rem; color: var(--navy-soft); }
+  .notice { margin: 0; width: var(--w); min-width: 280px; text-align: center; font-size: .8rem; color: var(--coral-dark); font-weight: 700; }
+  .notice:empty { display: none; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  kbd { background: var(--panel); border: 1px solid var(--navy-soft); border-radius: 5px; padding: 0 5px; font-size: .9em; }
+</style>
+</head>
+<body>
+  <h1>오늘도 무사히 <small>· 똥피하기</small></h1>
+
+  <div class="hud">
+    <div class="stat"><span>생존 시간</span><output id="time">0.0초</output></div>
+    <div class="stat"><span>피한 똥</span><output id="dodged">0</output></div>
+    <div class="stat"><span>최고 기록</span><output id="best">0.0초</output></div>
+    <button id="pauseBtn" type="button" aria-label="일시정지" disabled>⏸</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="game" width="480" height="600" role="img" aria-label="똥피하기 게임 화면. 하늘에서 떨어지는 똥을 좌우로 움직여 피하세요."></canvas>
+
+    <div class="overlay" id="readyOverlay" role="group" aria-labelledby="readyTitle">
+      <div class="card">
+        <h2 id="readyTitle">오늘도 무사히</h2>
+        <p>하늘에서 떨어지는 똥을 피해<br>오래오래 버텨 보세요.</p>
+        <button id="startBtn" class="primary" type="button">시작하기</button>
+        <button class="link resetBest" type="button">기록 지우기</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="pauseOverlay" role="group" aria-labelledby="pauseTitle" hidden>
+      <div class="card">
+        <h2 id="pauseTitle">일시정지</h2>
+        <p>준비되면 계속하기를 누르세요.</p>
+        <div class="row">
+          <button id="resumeBtn" class="primary" type="button">계속하기 (P)</button>
+          <button id="restartFromPauseBtn" type="button">다시 시작 (R)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="overOverlay" role="group" aria-labelledby="overTitle" hidden>
+      <div class="card">
+        <h2 id="overTitle">앗, 맞았어요!</h2>
+        <span class="badge" id="recordBadge" hidden>신기록!</span>
+        <p id="overText"></p>
+        <button id="restartBtn" class="primary" type="button">다시 하기 (R)</button>
+        <button class="link resetBest" type="button">기록 지우기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="leftBtn" class="hold" type="button" aria-label="왼쪽으로 이동 (누르고 있는 동안)" disabled>◀ 왼쪽</button>
+    <button id="rightBtn" class="hold" type="button" aria-label="오른쪽으로 이동 (누르고 있는 동안)" disabled>오른쪽 ▶</button>
+  </div>
+
+  <p class="hint">← → · A D · 아래 버튼 꾹 누르기</p>
+  <p class="notice" id="notice" role="status"></p>
+  <p class="sr-only" id="status" role="status" aria-live="polite"></p>
+
+<script>
+/**
+ * PoopDodgeEngine — 오늘도 무사히 · 똥피하기 의 순수 게임 로직.
+ * DOM 의존성이 없으며 CommonJS(module.exports)와 브라우저 전역(PoopDodgeEngine) 양쪽에서 쓸 수 있습니다.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.PoopDodgeEngine = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // ---- 튜닝 상수 (단위: 논리 픽셀, 초) ---------------------------------
+  var WIDTH = 480;
+  var HEIGHT = 600;
+  var GROUND_H = 64;
+  var GROUND_Y = HEIGHT - GROUND_H;   // 바닥 윗면
+
+  var PLAYER_W = 44;                  // 그려지는 캐릭터 크기
+  var PLAYER_H = 56;
+  var PLAYER_HIT_W = 28;              // 충돌 상자(AABB): 그림보다 작게 — 스쳐 지나가는 건 봐준다
+  var PLAYER_HIT_H = 40;
+  var PLAYER_SPEED = 330;             // px/s 최고 이동 속도
+  var PLAYER_ACCEL = 2800;            // px/s² 가속·감속 (약 0.12초에 최고 속도)
+  var PLAYER_MIN_X = PLAYER_W / 2;
+  var PLAYER_MAX_X = WIDTH - PLAYER_W / 2;
+  var PLAYER_START_X = WIDTH / 2;
+  var DRAG_SLOW_ZONE = 24;            // 끌기 목표 가까이에서 부드럽게 멈추는 거리
+
+  var POOP_DRAW_R = 22;               // 그려지는 똥 반지름
+  var POOP_HIT_R = 15;                // 충돌 원 반지름 (그림보다 작음)
+  var SPAWN_Y = -30;                  // 화면 위쪽 밖에서 생성
+
+  var RAMP_SECONDS = 100;             // 이 시간이 지나면 난이도가 상한에 도달
+  var FALL_SPEED_START = 170;         // px/s
+  var FALL_SPEED_MAX = 380;
+  var SPAWN_INTERVAL_START = 0.95;    // 초
+  var SPAWN_INTERVAL_MIN = 0.42;
+  var SPAWN_JITTER = 0.2;             // 간격의 ±20%
+  var FIRST_SPAWN_DELAY = 0.8;
+  var AIM_CHANCE = 0.35;              // 플레이어 근처를 노리는 확률
+
+  // 생성 지점에 여유를 남기는 '안전 통로': 천천히 좌우로 떠다니며 이 폭 안에는 똥을 만들지 않는다
+  var LANE_MARGIN = 26;
+  var LANE_HALF = POOP_HIT_R + PLAYER_HIT_W / 2 + LANE_MARGIN;   // 55
+  var LANE_MIN_X = LANE_HALF;
+  var LANE_MAX_X = WIDTH - LANE_HALF;
+  var LANE_SPEED = 100;               // px/s — 플레이어 속도보다 충분히 느림
+  var LANE_RETARGET_MIN = 0.8;
+  var LANE_RETARGET_MAX = 1.6;
+
+  var MAX_FRAME_DT = 1 / 20;          // 프레임 하나가 처리할 최대 시간 (탭 복귀 등 큰 dt 방지)
+  var SUBSTEP_DT = 1 / 120;           // 충돌 판정 하위 단계
+  var MAX_LANDINGS = 24;
+  var BEST_CAP_MS = 359999000;
+
+  var STATUS = { READY: 'ready', PLAYING: 'playing', PAUSED: 'paused', GAMEOVER: 'gameover' };
+
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+  function lerp(a, b, t) { return t >= 1 ? b : a + (b - a) * t; }
+
+  /** 경과 시간(초)에 따른 난이도. 상한이 있어 무한히 어려워지지 않는다. */
+  function difficultyAt(t) {
+    var k = t === Infinity ? 1 : clamp(t === t ? t / RAMP_SECONDS : 0, 0, 1);
+    return {
+      level: k,
+      fallSpeed: lerp(FALL_SPEED_START, FALL_SPEED_MAX, k),
+      spawnInterval: lerp(SPAWN_INTERVAL_START, SPAWN_INTERVAL_MIN, k)
+    };
+  }
+
+  /** 똥이 화면 위에서 나타나 플레이어 머리 높이에 닿기까지 걸리는 최소 시간(가장 빠를 때). */
+  var MIN_REACTION_TIME = (GROUND_Y - PLAYER_HIT_H - POOP_HIT_R - SPAWN_Y) / FALL_SPEED_MAX;
+
+  /** 원(cx,cy,r) 과 사각형(rx,ry,rw,rh) 이 겹치는가. */
+  function circleRectHit(cx, cy, r, rx, ry, rw, rh) {
+    var nx = clamp(cx, rx, rx + rw);
+    var ny = clamp(cy, ry, ry + rh);
+    var dx = cx - nx, dy = cy - ny;
+    return dx * dx + dy * dy <= r * r;
+  }
+
+  function playerBox(s) {
+    return { x: s.player.x - PLAYER_HIT_W / 2, y: GROUND_Y - PLAYER_HIT_H, w: PLAYER_HIT_W, h: PLAYER_HIT_H };
+  }
+
+  // ---- 입력 (순수 로직) ------------------------------------------------
+  /** 키보드 code → 동작. 한글 자판 상태에서도 동작하도록 e.code 기준. */
+  function actionForCode(code) {
+    switch (code) {
+      case 'ArrowLeft': case 'KeyA': return 'left';
+      case 'ArrowRight': case 'KeyD': return 'right';
+      case 'KeyP': case 'Escape': return 'pause';
+      case 'KeyR': return 'restart';
+      default: return null;
+    }
+  }
+
+  /** 누르고 있는 입력 출처(source) 별로 기록한다. 왼쪽·오른쪽이 동시에 눌리면 상쇄된다. */
+  function press(s, source, dir) {
+    if (s.status !== STATUS.PLAYING) return false;
+    if (dir !== -1 && dir !== 1) return false;
+    s.input.held[source] = dir;
+    return true;
+  }
+  function release(s, source) {
+    if (!Object.prototype.hasOwnProperty.call(s.input.held, source)) return false;
+    delete s.input.held[source];
+    return true;
+  }
+  function releaseAll(s) {
+    s.input.held = {};
+    s.input.target = null;
+  }
+  function inputDir(s) {
+    var d = 0;
+    var held = s.input.held;
+    var seenL = false, seenR = false;
+    for (var k in held) {
+      if (held[k] < 0) seenL = true; else if (held[k] > 0) seenR = true;
+    }
+    if (seenL) d -= 1;
+    if (seenR) d += 1;
+    return d;
+  }
+  /** 캔버스 끌기 목표 지점(논리 x). null 이면 해제. */
+  function setTarget(s, x) {
+    if (x === null) { s.input.target = null; return true; }
+    if (s.status !== STATUS.PLAYING || !isFinite(x)) return false;
+    s.input.target = clamp(x, PLAYER_MIN_X, PLAYER_MAX_X);
+    return true;
+  }
+
+  // ---- 상태 ------------------------------------------------------------
+  function createState(opts) {
+    opts = opts || {};
+    var s = {
+      rng: opts.rng || Math.random,
+      status: STATUS.READY,
+      time: 0,              // 생존 시간(초) — 플레이 중에만 흐른다
+      dodged: 0,
+      best: sanitizeBest(opts.best),   // 최고 생존 시간(초)
+      bestAtStart: 0,
+      newRecord: false,
+      player: { x: PLAYER_START_X, vx: 0 },
+      input: { held: {}, target: null },
+      poops: [],
+      landings: [],         // 바닥에 떨어진 위치(연출용). 앱이 비워 간다.
+      lane: { x: WIDTH / 2, v: 0, retarget: 0 },
+      spawnTimer: FIRST_SPAWN_DELAY,
+      nextId: 1,
+      hitBy: null
+    };
+    s.bestAtStart = s.best;
+    return s;
+  }
+
+  function reset(s) {
+    var best = s.best;
+    var fresh = createState({ rng: s.rng, best: best });
+    for (var k in fresh) s[k] = fresh[k];
+    return s;
+  }
+
+  function start(s) {
+    if (s.status !== STATUS.READY) return false;
+    s.status = STATUS.PLAYING;
+    s.bestAtStart = s.best;
+    releaseAll(s);
+    return true;
+  }
+  function pause(s) {
+    if (s.status !== STATUS.PLAYING) return false;
+    s.status = STATUS.PAUSED;
+    s.player.vx = 0;
+    releaseAll(s);
+    return true;
+  }
+  function resume(s) {
+    if (s.status !== STATUS.PAUSED) return false;
+    s.status = STATUS.PLAYING;
+    releaseAll(s);
+    return true;
+  }
+  /** 일시정지·게임 오버 상태에서만 다시 시작. 최고 기록은 유지. */
+  function restart(s) {
+    if (s.status !== STATUS.PAUSED && s.status !== STATUS.GAMEOVER) return false;
+    reset(s);
+    s.status = STATUS.PLAYING;
+    s.bestAtStart = s.best;
+    return true;
+  }
+  /** 최고 기록 지우기. 플레이 중에는 거부한다. */
+  function resetBest(s) {
+    if (s.status === STATUS.PLAYING) return false;
+    s.best = 0;
+    s.bestAtStart = 0;
+    s.newRecord = false;
+    return true;
+  }
+
+  // ---- 저장값 다루기 ----------------------------------------------------
+  /** 저장된 문자열/숫자(밀리초 또는 초)를 안전한 초 단위 숫자로. 이상한 값은 0. */
+  function sanitizeBest(v) {
+    if (typeof v !== 'number' || !isFinite(v) || v <= 0) return 0;
+    return Math.min(v, BEST_CAP_MS / 1000);
+  }
+  function parseStoredBest(raw) {
+    if (typeof raw !== 'string' || !/^\d{1,9}$/.test(raw)) return 0;
+    return sanitizeBest(parseInt(raw, 10) / 1000);
+  }
+  function serializeBest(sec) {
+    return String(Math.floor(sanitizeBest(sec) * 1000));
+  }
+  function formatTime(sec) {
+    sec = isFinite(sec) && sec > 0 ? sec : 0;
+    var tenths = Math.floor(sec * 10 + 1e-9);
+    var m = Math.floor(tenths / 600);
+    var rest = (tenths - m * 600) / 10;
+    var txt = rest.toFixed(1);
+    if (m > 0) return m + '분 ' + (rest < 10 ? '0' : '') + txt + '초';
+    return txt + '초';
+  }
+
+  // ---- 진행 ------------------------------------------------------------
+  function updateLane(s, h) {
+    var lane = s.lane;
+    lane.retarget -= h;
+    if (lane.retarget <= 0) {
+      lane.v = (s.rng() * 2 - 1) * LANE_SPEED;
+      lane.retarget = lerp(LANE_RETARGET_MIN, LANE_RETARGET_MAX, s.rng());
+    }
+    lane.x += lane.v * h;
+    if (lane.x < LANE_MIN_X) { lane.x = LANE_MIN_X; lane.v = Math.abs(lane.v); }
+    else if (lane.x > LANE_MAX_X) { lane.x = LANE_MAX_X; lane.v = -Math.abs(lane.v); }
+  }
+
+  /** 안전 통로 밖에서 x 를 고른다. 통로 밖이 없으면 null. */
+  function pickSpawnX(s) {
+    var lo = POOP_DRAW_R, hi = WIDTH - POOP_DRAW_R;
+    var a1 = lo, b1 = s.lane.x - LANE_HALF;
+    var a2 = s.lane.x + LANE_HALF, b2 = hi;
+    var l1 = Math.max(0, b1 - a1), l2 = Math.max(0, b2 - a2);
+    function allowed(x) { return (x >= a1 && x <= b1) || (x >= a2 && x <= b2); }
+    if (s.rng() < AIM_CHANCE) {
+      var aim = s.player.x + (s.rng() - 0.5) * 60;
+      if (allowed(aim)) return aim;
+    }
+    var total = l1 + l2;
+    if (total <= 0) return null;
+    var u = s.rng() * total;
+    return u < l1 ? a1 + u : a2 + (u - l1);
+  }
+
+  function spawnPoop(s, fallSpeed) {
+    var x = pickSpawnX(s);
+    if (x === null) return;
+    s.poops.push({ id: s.nextId++, x: x, y: SPAWN_Y, vy: fallSpeed, r: POOP_HIT_R, rot: s.rng() * 6.283 });
+  }
+
+  function movePlayer(s, h) {
+    var p = s.player;
+    var dir = inputDir(s);
+    var want = 0;
+    if (dir !== 0) want = dir * PLAYER_SPEED;
+    else if (s.input.target !== null) {
+      var d = s.input.target - p.x;
+      if (Math.abs(d) > 1) want = (d > 0 ? 1 : -1) * PLAYER_SPEED * Math.min(1, Math.abs(d) / DRAG_SLOW_ZONE);
+    }
+    var dv = want - p.vx, maxDv = PLAYER_ACCEL * h;
+    p.vx += clamp(dv, -maxDv, maxDv);
+    p.x += p.vx * h;
+    if (p.x < PLAYER_MIN_X) { p.x = PLAYER_MIN_X; p.vx = 0; }
+    else if (p.x > PLAYER_MAX_X) { p.x = PLAYER_MAX_X; p.vx = 0; }
+  }
+
+  function substep(s, h) {
+    s.time += h;
+    if (s.time > s.best) {
+      s.best = s.time;
+      s.newRecord = s.time > s.bestAtStart;
+    }
+    var diff = difficultyAt(s.time);
+
+    movePlayer(s, h);
+    updateLane(s, h);
+
+    s.spawnTimer -= h;
+    if (s.spawnTimer <= 0) {
+      spawnPoop(s, diff.fallSpeed);
+      s.spawnTimer += diff.spawnInterval * (1 + (s.rng() * 2 - 1) * SPAWN_JITTER);
+    }
+
+    var box = playerBox(s);
+    var keep = [];
+    for (var i = 0; i < s.poops.length; i++) {
+      var q = s.poops[i];
+      q.y += q.vy * h;
+      if (circleRectHit(q.x, q.y, q.r, box.x, box.y, box.w, box.h)) {
+        s.status = STATUS.GAMEOVER;
+        s.hitBy = q;
+        s.player.vx = 0;
+        releaseAll(s);
+        return;
+      }
+      if (q.y + q.r >= GROUND_Y) {
+        s.dodged += 1;   // 판정을 지나 바닥에 닿는 순간 딱 한 번 (목록에서 즉시 제거)
+        s.landings.push({ x: q.x, id: q.id });
+        if (s.landings.length > MAX_LANDINGS) s.landings.shift();
+      } else keep.push(q);
+    }
+    s.poops = keep;
+  }
+
+  /** dt(초)만큼 진행. 너무 큰 dt 는 잘라내고, 작은 하위 단계로 나눠 관통을 막는다. */
+  function step(s, dt) {
+    if (s.status !== STATUS.PLAYING) return;
+    if (!isFinite(dt) || dt <= 0) return;
+    dt = Math.min(dt, MAX_FRAME_DT);
+    var n = Math.ceil(dt / SUBSTEP_DT - 1e-9);
+    var h = dt / n;
+    for (var i = 0; i < n && s.status === STATUS.PLAYING; i++) substep(s, h);
+  }
+
+  return {
+    WIDTH: WIDTH, HEIGHT: HEIGHT, GROUND_H: GROUND_H, GROUND_Y: GROUND_Y,
+    PLAYER_W: PLAYER_W, PLAYER_H: PLAYER_H, PLAYER_HIT_W: PLAYER_HIT_W, PLAYER_HIT_H: PLAYER_HIT_H,
+    PLAYER_SPEED: PLAYER_SPEED, PLAYER_ACCEL: PLAYER_ACCEL, PLAYER_MIN_X: PLAYER_MIN_X, PLAYER_MAX_X: PLAYER_MAX_X,
+    PLAYER_START_X: PLAYER_START_X,
+    POOP_DRAW_R: POOP_DRAW_R, POOP_HIT_R: POOP_HIT_R, SPAWN_Y: SPAWN_Y,
+    RAMP_SECONDS: RAMP_SECONDS, FALL_SPEED_START: FALL_SPEED_START, FALL_SPEED_MAX: FALL_SPEED_MAX,
+    SPAWN_INTERVAL_START: SPAWN_INTERVAL_START, SPAWN_INTERVAL_MIN: SPAWN_INTERVAL_MIN,
+    SPAWN_JITTER: SPAWN_JITTER, FIRST_SPAWN_DELAY: FIRST_SPAWN_DELAY, AIM_CHANCE: AIM_CHANCE,
+    LANE_HALF: LANE_HALF, LANE_SPEED: LANE_SPEED, MIN_REACTION_TIME: MIN_REACTION_TIME,
+    MAX_FRAME_DT: MAX_FRAME_DT, SUBSTEP_DT: SUBSTEP_DT, STATUS: STATUS,
+    difficultyAt: difficultyAt, circleRectHit: circleRectHit, playerBox: playerBox,
+    actionForCode: actionForCode, press: press, release: release, releaseAll: releaseAll,
+    inputDir: inputDir, setTarget: setTarget,
+    createState: createState, reset: reset, start: start, pause: pause, resume: resume,
+    restart: restart, resetBest: resetBest,
+    sanitizeBest: sanitizeBest, parseStoredBest: parseStoredBest, serializeBest: serializeBest,
+    formatTime: formatTime, step: step
+  };
+});
+
+</script>
+<script>
+/* 오늘도 무사히 · 똥피하기 — 화면·입력·저장 (게임 규칙은 engine.js) */
+(function () {
+  'use strict';
+  var E = window.PoopDodgeEngine;
+  var W = E.WIDTH, H = E.HEIGHT, GY = E.GROUND_Y;
+  var BEST_KEY = 'edyedy.poopDodge.bestMs';
+
+  var C = {
+    cream: '#fff6e4', sky1: '#ffe8c2', sky2: '#fff8ea', navy: '#1d2b4f', coral: '#ef7a62', teal: '#2a9d8f',
+    tealLight: '#8fd0c3', tealPale: '#c4e8df', poop: '#94612f', poopLight: '#b98550', poopDark: '#4d2f17',
+    skin: '#ffd9b8', soil: '#ecd0a2', soilDark: '#d9b782'
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var canvas = $('game'), ctx = canvas.getContext('2d');
+  var el = {
+    time: $('time'), dodged: $('dodged'), best: $('best'), status: $('status'), notice: $('notice'),
+    pauseBtn: $('pauseBtn'), startBtn: $('startBtn'), resumeBtn: $('resumeBtn'), restartBtn: $('restartBtn'),
+    restartFromPauseBtn: $('restartFromPauseBtn'),
+    ready: $('readyOverlay'), pause: $('pauseOverlay'), over: $('overOverlay'),
+    overText: $('overText'), badge: $('recordBadge'), left: $('leftBtn'), right: $('rightBtn')
+  };
+
+  // ---- 저장 (실패해도 게임은 계속) -------------------------------------
+  var storageOk = true;
+  function loadBest() {
+    try { return E.parseStoredBest(localStorage.getItem(BEST_KEY)); } catch (e) { return 0; }
+  }
+  function writeStorage(fn) {
+    try { fn(); return true; } catch (e) {
+      if (storageOk) {
+        storageOk = false;
+        el.notice.textContent = '기록을 저장할 수 없어요. 이 창을 닫으면 기록이 사라져요.';
+      }
+      return false;
+    }
+  }
+
+  var s = E.createState({ best: loadBest() });
+  var savedTenth = Math.floor(s.best * 10), savedSer = E.serializeBest(s.best);
+
+  /** 최고 기록이 오르는 즉시(0.1초 단위) 저장. force 면 정확한 값으로 한 번 더 저장. */
+  function persistBest(force) {
+    var tenth = Math.floor(s.best * 10);
+    if (!force && tenth === savedTenth) return;
+    var ser = E.serializeBest(s.best);
+    if (ser === savedSer) return;
+    savedTenth = tenth; savedSer = ser;
+    writeStorage(function () { localStorage.setItem(BEST_KEY, ser); });
+  }
+
+  // ---- 화면 상태 --------------------------------------------------------
+  var shownStatus = null;
+  var anim = 0, shake = 0, facing = 1, stride = 0;
+  var splats = [], bursts = [];
+  var dragPointer = null;
+  var raf = 0, lastT = 0;
+
+  function say(msg) { el.status.textContent = msg; }
+
+  function updateHud() {
+    var t = E.formatTime(s.time), b = E.formatTime(s.best);
+    if (el.time.textContent !== t) el.time.textContent = t;
+    if (el.best.textContent !== b) el.best.textContent = b;
+    var d = String(s.dodged);
+    if (el.dodged.textContent !== d) el.dodged.textContent = d;
+  }
+
+  function updateHoldUI() {
+    var l = false, r = false, held = s.input.held;
+    for (var k in held) { if (held[k] < 0) l = true; else r = true; }
+    el.left.classList.toggle('on', l);
+    el.right.classList.toggle('on', r);
+  }
+
+  function syncStatus() {
+    if (shownStatus === s.status) return;
+    var prev = shownStatus;
+    shownStatus = s.status;
+    var st = E.STATUS;
+    el.ready.hidden = s.status !== st.READY;
+    el.pause.hidden = s.status !== st.PAUSED;
+    el.over.hidden = s.status !== st.GAMEOVER;
+    var active = s.status === st.PLAYING;
+    el.left.disabled = el.right.disabled = !active;
+    el.pauseBtn.disabled = !(active || s.status === st.PAUSED);
+    el.pauseBtn.textContent = s.status === st.PAUSED ? '▶' : '⏸';
+    el.pauseBtn.setAttribute('aria-label', s.status === st.PAUSED ? '계속하기' : '일시정지');
+    updateHoldUI();
+    if (s.status === st.PAUSED) { say('일시정지'); el.resumeBtn.focus(); }
+    else if (s.status === st.PLAYING) { say(prev === st.PAUSED ? '계속합니다' : '시작!'); blurIfHidden(); }
+    else if (s.status === st.GAMEOVER) {
+      el.overText.textContent = E.formatTime(s.time) + ' 버텼고, 똥 ' + s.dodged + '개를 피했어요.';
+      el.badge.hidden = !s.newRecord;
+      persistBest(true);
+      say('게임 오버. ' + el.overText.textContent + (s.newRecord ? ' 신기록입니다.' : ''));
+      el.restartBtn.focus();
+    } else say('준비');
+    updateHud();
+    ensureLoop();
+  }
+  function blurIfHidden() {
+    var a = document.activeElement;
+    if (a && a !== document.body && a.offsetParent === null && a.blur) a.blur();
+  }
+
+  // ---- 동작 (버튼·키보드가 공유) ------------------------------------------
+  function doStart() { if (E.start(s)) syncStatus(); }
+  function doPause() {
+    if (E.pause(s)) { dragPointer = null; persistBest(true); syncStatus(); return true; }
+    return false;
+  }
+  function doResume() { if (E.resume(s)) { dragPointer = null; syncStatus(); } }
+  function doRestart() {
+    if (E.restart(s)) {
+      dragPointer = null; splats = []; bursts = []; shake = 0;
+      shownStatus = null; syncStatus();
+      say('다시 시작!');
+    }
+  }
+  function togglePause() { if (!doPause()) doResume(); }
+
+  // 버튼은 click 하나만 사용한다 (pointerdown 과 겹쳐 두 번 처리되는 일 방지)
+  el.startBtn.addEventListener('click', doStart);
+  el.pauseBtn.addEventListener('click', togglePause);
+  el.resumeBtn.addEventListener('click', doResume);
+  el.restartBtn.addEventListener('click', doRestart);
+  el.restartFromPauseBtn.addEventListener('click', doRestart);
+
+  // 기록 지우기: 두 번 눌러야 지워진다
+  var resetTimer = 0;
+  Array.prototype.forEach.call(document.querySelectorAll('.resetBest'), function (btn) {
+    btn.addEventListener('click', function () {
+      if (s.status === E.STATUS.PLAYING) return;
+      if (!resetTimer) {
+        setAllReset('정말 지울까요? 한 번 더 누르세요');
+        resetTimer = setTimeout(cancelReset, 3500);
+        return;
+      }
+      cancelReset();
+      if (E.resetBest(s)) {
+        savedTenth = 0; savedSer = '0';
+        writeStorage(function () { localStorage.removeItem(BEST_KEY); });
+        updateHud();
+        el.badge.hidden = true;
+        say('최고 기록을 지웠어요');
+      }
+    });
+  });
+  function setAllReset(text) {
+    Array.prototype.forEach.call(document.querySelectorAll('.resetBest'), function (b) { b.textContent = text; });
+  }
+  function cancelReset() { clearTimeout(resetTimer); resetTimer = 0; setAllReset('기록 지우기'); }
+
+  // ---- 키보드 -----------------------------------------------------------
+  window.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var act = E.actionForCode(e.code);
+    if (!act) return;
+    if (act === 'left' || act === 'right') {
+      e.preventDefault();
+      if (E.press(s, 'key:' + e.code, act === 'left' ? -1 : 1)) updateHoldUI();
+    } else if (!e.repeat) {
+      e.preventDefault();
+      if (act === 'pause') togglePause();
+      else if (act === 'restart') doRestart();   // 엔진이 일시정지·게임 오버에서만 허용
+    }
+  });
+  window.addEventListener('keyup', function (e) {
+    if (E.release(s, 'key:' + e.code)) updateHoldUI();
+  });
+
+  // ---- 화면 버튼(누르고 있기) ---------------------------------------------
+  function bindHold(btn, dir) {
+    var prefix = 'btn:' + dir + ':';
+    btn.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      if (E.press(s, prefix + e.pointerId, dir)) {
+        try { btn.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
+        updateHoldUI();
+      }
+    });
+    function up(e) { if (E.release(s, prefix + e.pointerId)) updateHoldUI(); }
+    btn.addEventListener('pointerup', up);
+    btn.addEventListener('pointercancel', up);
+    btn.addEventListener('lostpointercapture', up);
+    btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    btn.addEventListener('click', function (e) { e.preventDefault(); });   // 키보드 Enter/Space 로는 이동하지 않음
+  }
+  bindHold(el.left, -1);
+  bindHold(el.right, 1);
+
+  // ---- 캔버스 끌기 (누른 채 손가락/마우스 쪽으로 이동) -------------------------
+  function logicalX(e) {
+    var r = canvas.getBoundingClientRect();
+    return (e.clientX - r.left) / r.width * W;
+  }
+  canvas.addEventListener('pointerdown', function (e) {
+    if (s.status !== E.STATUS.PLAYING || dragPointer !== null) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    dragPointer = e.pointerId;
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
+    E.setTarget(s, logicalX(e));
+  });
+  canvas.addEventListener('pointermove', function (e) {
+    if (e.pointerId === dragPointer) E.setTarget(s, logicalX(e));
+  });
+  function endDrag(e) {
+    if (e.pointerId !== dragPointer) return;
+    dragPointer = null;
+    E.setTarget(s, null);
+  }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('lostpointercapture', endDrag);
+  canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  // ---- 창이 가려지면 자동 일시정지 -------------------------------------------
+  function autoPause() { doPause(); }
+  window.addEventListener('blur', autoPause);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) autoPause(); });
+  window.addEventListener('pagehide', function () { persistBest(true); autoPause(); });
+
+  // ---- 그리기 -----------------------------------------------------------
+  function fit() {
+    var r = canvas.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    var pw = Math.max(1, Math.round(r.width * dpr));
+    var ph = Math.round(pw * H / W);
+    if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
+    ctx.setTransform(pw / W, 0, 0, pw / W, 0, 0);
+    draw();
+  }
+  window.addEventListener('resize', fit);
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(canvas);
+
+  function ellipse(x, y, rx, ry) { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 6.2832); }
+  function outline(w) { ctx.lineWidth = w || 3; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = C.navy; ctx.stroke(); }
+
+  function cloud(x, y, sc) {
+    ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc);
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    ctx.beginPath();
+    ctx.arc(0, 0, 18, 0, 6.2832); ctx.arc(22, -8, 22, 0, 6.2832); ctx.arc(46, 0, 17, 0, 6.2832);
+    ctx.rect(0, 0, 46, 17); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawBackground() {
+    var g = ctx.createLinearGradient(0, 0, 0, GY);
+    g.addColorStop(0, C.sky1); g.addColorStop(1, C.sky2);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // 해
+    ctx.fillStyle = 'rgba(239,122,98,.18)'; ellipse(392, 96, 54, 54); ctx.fill();
+    ctx.fillStyle = C.coral; ellipse(392, 96, 34, 34); ctx.fill(); outline(3);
+    // 구름
+    var d = anim * 9;
+    cloud(((70 + d) % (W + 160)) - 80, 70, 1.1);
+    cloud(((300 + d * .6) % (W + 160)) - 80, 150, .8);
+    cloud(((190 + d * .8) % (W + 160)) - 80, 240, .7);
+    // 언덕
+    ctx.fillStyle = C.tealPale;
+    ctx.beginPath(); ctx.moveTo(0, GY); ctx.quadraticCurveTo(90, GY - 120, 210, GY - 40); ctx.quadraticCurveTo(320, GY - 100, W, GY - 30); ctx.lineTo(W, GY); ctx.fill();
+    ctx.fillStyle = C.tealLight;
+    ctx.beginPath(); ctx.moveTo(0, GY); ctx.quadraticCurveTo(120, GY - 50, 260, GY - 8); ctx.quadraticCurveTo(380, GY - 60, W, GY - 12); ctx.lineTo(W, GY); ctx.fill();
+    // 땅
+    ctx.fillStyle = C.soil; ctx.fillRect(0, GY, W, H - GY);
+    ctx.fillStyle = C.soilDark;
+    for (var i = 0; i < 16; i++) { ellipse(18 + i * 31 + (i % 3) * 5, GY + 30 + (i % 4) * 8, 4 + i % 3, 2.4); ctx.fill(); }
+    ctx.fillStyle = C.teal; ctx.fillRect(0, GY, W, 12);
+    ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(0, GY, W, 3);
+    ctx.strokeStyle = C.navy; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0, GY + 12); ctx.lineTo(W, GY + 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, GY); ctx.lineTo(W, GY); ctx.stroke();
+  }
+
+  function drawPoop(x, y, rot, scale, mood) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(scale, scale);
+    ctx.fillStyle = C.poop;
+    // 아래 → 위 세 덩이
+    ellipse(0, 9, 21, 11); ctx.fill(); outline(3);
+    ellipse(0, -3, 15.5, 9.5); ctx.fill(); outline(3);
+    ctx.beginPath(); ctx.moveTo(-9, -10); ctx.quadraticCurveTo(-8, -20, 4, -23); ctx.quadraticCurveTo(3, -17, 9, -13); ctx.quadraticCurveTo(0, -6, -9, -10);
+    ctx.fill(); outline(3);
+    // 하이라이트
+    ctx.strokeStyle = C.poopLight; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-15, 8); ctx.quadraticCurveTo(-13, 3, -8, 1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-9, -4); ctx.quadraticCurveTo(-8, -7, -4, -8); ctx.stroke();
+    // 얼굴
+    ctx.fillStyle = '#fff';
+    ellipse(-6, 6, 4.2, 4.8); ctx.fill(); ellipse(6, 6, 4.2, 4.8); ctx.fill();
+    ctx.fillStyle = C.navy;
+    var look = mood === 'hit' ? 0 : 1.6;
+    ellipse(-6, 6.6 + look * .3, 2.1, 2.5); ctx.fill(); ellipse(6, 6.6 + look * .3, 2.1, 2.5); ctx.fill();
+    ctx.strokeStyle = C.navy; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath();
+    if (mood === 'hit') ctx.arc(0, 14, 3.5, 3.4, 6.0); else ctx.arc(0, 11, 4.5, 0.25, 2.9);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(239,122,98,.55)';
+    ellipse(-13, 11, 3, 2); ctx.fill(); ellipse(13, 11, 3, 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPlayer(dead) {
+    var p = s.player;
+    var lean = p.vx / E.PLAYER_SPEED * 0.1;
+    var bob = s.status === E.STATUS.READY ? Math.sin(anim * 3) * 1.5 : 0;
+    ctx.save(); ctx.translate(p.x, GY + bob); ctx.rotate(dead ? 0 : lean);
+    // 그림자
+    ctx.fillStyle = 'rgba(29,43,79,.18)'; ellipse(0, 1, 20, 4); ctx.fill();
+    var sw = dead ? 0 : Math.sin(stride) * (Math.abs(p.vx) > 20 ? 6 : 0);
+    // 다리
+    ctx.strokeStyle = C.navy; ctx.lineWidth = 6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-7, -14); ctx.lineTo(-7 + sw, -3); ctx.moveTo(7, -14); ctx.lineTo(7 - sw, -3); ctx.stroke();
+    ctx.fillStyle = C.coral;
+    ellipse(-7 + sw, -2, 6, 3.4); ctx.fill(); outline(2.5); ellipse(7 - sw, -2, 6, 3.4); ctx.fill(); outline(2.5);
+    // 몸
+    ctx.fillStyle = C.teal;
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-14, -34, 28, 24, 9) : ctx.rect(-14, -34, 28, 24);
+    ctx.fill(); outline(3);
+    ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fillRect(-9, -30, 5, 12);
+    // 팔
+    var armUp = dead ? 0 : (s.status === E.STATUS.PLAYING ? 1 : 0);
+    ctx.strokeStyle = C.navy; ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(-14, -28); ctx.lineTo(-21, -22 - armUp * 4); ctx.moveTo(14, -28); ctx.lineTo(21, -22 - armUp * 4); ctx.stroke();
+    // 머리
+    ctx.fillStyle = C.skin; ellipse(0, -41, 16, 15.5); ctx.fill(); outline(3);
+    // 모자
+    ctx.fillStyle = C.coral;
+    ctx.beginPath(); ctx.arc(0, -43, 16.5, 3.3, 6.12); ctx.closePath(); ctx.fill(); outline(3);
+    ctx.beginPath(); ctx.ellipse(facing * 11, -44, 9, 3, 0, 0, 6.2832); ctx.fill(); outline(2.5);
+    // 얼굴
+    var fx = facing * 2;
+    ctx.fillStyle = C.navy; ctx.strokeStyle = C.navy; ctx.lineWidth = 2;
+    if (dead) {
+      [-6, 6].forEach(function (ex) {
+        ctx.beginPath(); ctx.moveTo(ex + fx - 2.5, -40); ctx.lineTo(ex + fx + 2.5, -35); ctx.moveTo(ex + fx + 2.5, -40); ctx.lineTo(ex + fx - 2.5, -35); ctx.stroke();
+      });
+      ctx.beginPath(); ctx.moveTo(-4 + fx, -30); ctx.quadraticCurveTo(fx, -33, 4 + fx, -30); ctx.stroke();
+    } else {
+      ellipse(-5.5 + fx, -37, 1.9, 2.4); ctx.fill(); ellipse(5.5 + fx, -37, 1.9, 2.4); ctx.fill();
+      ctx.beginPath();
+      if (s.status === E.STATUS.PLAYING) ctx.arc(fx, -31, 2.4, 0, 6.2832); else ctx.arc(fx, -33, 3.6, 0.25, 2.9);
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(239,122,98,.5)';
+    ellipse(-10 + fx, -33, 3, 2); ctx.fill(); ellipse(10 + fx, -33, 3, 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawShadows() {
+    for (var i = 0; i < s.poops.length; i++) {
+      var q = s.poops[i];
+      var k = Math.max(0, Math.min(1, q.y / GY));
+      ctx.fillStyle = 'rgba(29,43,79,' + (0.06 + 0.16 * k).toFixed(3) + ')';
+      ellipse(q.x, GY + 6, 7 + 12 * k, 2 + 2.5 * k); ctx.fill();
+    }
+  }
+
+  function drawEffects() {
+    for (var i = 0; i < splats.length; i++) {
+      var sp = splats[i], a = Math.max(0, 1 - sp.age / 1.1), sq = Math.min(1, sp.age / 0.12);
+      ctx.globalAlpha = a; ctx.fillStyle = C.poop;
+      ellipse(sp.x, GY + 5, 12 + 6 * sq, 3 + 2 * sq); ctx.fill();
+      ellipse(sp.x - 9, GY + 4, 3, 1.6); ctx.fill(); ellipse(sp.x + 10, GY + 5, 2.4, 1.4); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    for (var j = 0; j < bursts.length; j++) {
+      var b = bursts[j];
+      ctx.globalAlpha = Math.max(0, 1 - b.age / 0.9);
+      ctx.fillStyle = b.c; ellipse(b.x, b.y, b.r, b.r); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function draw() {
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - .5) * shake * 10, (Math.random() - .5) * shake * 10);
+    drawBackground();
+    drawShadows();
+    drawEffects();
+    var dead = s.status === E.STATUS.GAMEOVER;
+    drawPlayer(dead);
+    for (var i = 0; i < s.poops.length; i++) {
+      var q = s.poops[i];
+      drawPoop(q.x, q.y, Math.sin(anim * 5 + q.id) * 0.18 + q.rot * 0.05, 1, 'fall');
+    }
+    if (dead && s.hitBy) drawPoop(s.hitBy.x, s.hitBy.y, 0.2, 1.1, 'hit');
+    if (s.status === E.STATUS.READY) {
+      drawPoop(96, 120 + Math.sin(anim * 2) * 6, -0.15, 1.15, 'fall');
+      drawPoop(392, 190 + Math.sin(anim * 2 + 1.5) * 6, 0.18, 0.95, 'fall');
+    }
+    ctx.restore();
+  }
+
+  // ---- 루프 (일시정지·정지 화면에서는 멈춘다) --------------------------------
+  function effectsActive() { return splats.length > 0 || bursts.length > 0 || shake > 0; }
+  function needsLoop() {
+    return s.status === E.STATUS.READY || s.status === E.STATUS.PLAYING ||
+      (s.status === E.STATUS.GAMEOVER && effectsActive());
+  }
+  function ensureLoop() {
+    if (needsLoop()) { if (!raf) { lastT = 0; raf = requestAnimationFrame(frame); } }
+    else { draw(); }
+  }
+
+  function tickEffects(dt) {
+    var i;
+    for (i = splats.length - 1; i >= 0; i--) { splats[i].age += dt; if (splats[i].age > 1.1) splats.splice(i, 1); }
+    for (i = bursts.length - 1; i >= 0; i--) {
+      var b = bursts[i]; b.age += dt; b.x += b.vx * dt; b.y += b.vy * dt; b.vy += 700 * dt;
+      if (b.age > 0.9) bursts.splice(i, 1);
+    }
+    if (shake > 0) shake = Math.max(0, shake - dt * 3);
+  }
+
+  function frame(now) {
+    raf = 0;
+    var dt = lastT ? Math.min((now - lastT) / 1000, 0.05) : 0;
+    lastT = now;
+    var wasPlaying = s.status === E.STATUS.PLAYING;
+
+    E.step(s, dt);
+    if (s.status === E.STATUS.READY || s.status === E.STATUS.PLAYING) {
+      anim += dt;
+      stride += Math.abs(s.player.vx) * dt * 0.09;
+      if (Math.abs(s.player.vx) > 10) facing = s.player.vx > 0 ? 1 : -1;
+    }
+    for (var i = 0; i < s.landings.length; i++) splats.push({ x: s.landings[i].x, age: 0 });
+    s.landings.length = 0;
+    if (wasPlaying && s.status === E.STATUS.GAMEOVER && s.hitBy) {
+      shake = 1;
+      var cols = [C.poop, C.coral, C.teal, C.cream];
+      for (var k = 0; k < 16; k++) {
+        var ang = Math.random() * 6.2832, sp = 90 + Math.random() * 190;
+        bursts.push({ x: s.hitBy.x, y: s.hitBy.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 120, r: 2.5 + Math.random() * 3, c: cols[k % 4], age: 0 });
+      }
+    }
+    tickEffects(dt);
+
+    persistBest(false);
+    updateHud();
+    syncStatus();
+    draw();
+    if (needsLoop() && !raf) raf = requestAnimationFrame(frame);
+  }
+
+  // ---- 시작 ---------------------------------------------------------------
+  syncStatus();
+  fit();
+})();
+
+</script>
+</body>
+</html>
