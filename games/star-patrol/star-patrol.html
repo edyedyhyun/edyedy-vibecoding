@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>별빛 순찰대 · Star Patrol</title>
+<style>
+  :root {
+    --navy-deep: #071022;
+    --navy: #0a1730;
+    --panel: #0f1f3d;
+    --mint: #5eead4;
+    --amber: #ffc65c;
+    --coral: #ff8a6b;
+    --text: #eaf6f2;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; background: var(--navy-deep); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    overscroll-behavior: none; user-select: none;
+  }
+  #app {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 8px; gap:6px;
+  }
+  #stage {
+    position: relative; width: min(480px, calc((100dvh - 100px) * .75), calc(100vw - 16px)); aspect-ratio: 3 / 4; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center; min-height: 0;
+  }
+  canvas#game {
+    display: block; background: var(--navy-deep); border-radius: 10px;
+    box-shadow: 0 0 0 1px rgba(94,234,212,0.25), 0 10px 40px rgba(0,0,0,0.5);
+    touch-action: none;
+  }
+  #hud {
+    position: absolute; top: 6px; left: 12px; right: 12px;
+    display: flex; justify-content: space-between; font-size: 12px; padding:8px; background:rgba(7,16,34,.9); border-radius:8px;
+    letter-spacing: 0.02em; pointer-events: auto; text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  }
+  #hud.hidden { display: none; }
+  #hud span.label { color: var(--mint); margin-right: 4px; }
+  #startScreen {
+    position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px; text-align: center;
+    background: rgba(7,16,34,.82);
+    padding: 24px;
+  }
+  #startScreen.hidden { display: none; }
+  #startScreen h1 { margin: 0; font-size: 28px; color: var(--mint); letter-spacing: 0.05em; }
+  #startScreen p.sub { margin: 0; opacity: 0.75; font-size: 13px; }
+  .fireRow { display: flex; gap: 10px; }
+  .fireOpt {
+    padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(94,234,212,0.4);
+    background: var(--panel); color: var(--text); font-size: 14px; cursor: pointer;
+  }
+  .fireOpt.active { background: var(--mint); color: var(--navy-deep); font-weight: 700; border-color: var(--mint); }
+  #btnStart {
+    padding: 14px 40px; font-size: 18px; font-weight: 700; border-radius: 10px; border: none;
+    background: var(--amber); color: var(--navy-deep); cursor: pointer;
+    box-shadow: 0 6px 20px rgba(255,198,92,0.35);
+  }
+  .keyHint { font-size: 12px; opacity: 0.6; max-width: 320px; line-height: 1.5; }
+  #overlay {
+    position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 8px;
+    background: rgba(7,16,34,0.40); text-align: center;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h2 { text-shadow:0 2px 8px #000; margin: 0; color: var(--coral); font-size: 24px; }
+  #overlay p { margin: 0; font-size: 13px; opacity: 0.85; }
+  #touchControls {
+    display: flex; gap: 10px; width: 100%; max-width: 480px; padding: 10px 4px 4px;
+  }
+  .touchBtn {
+    flex: 1; padding: 14px 0; min-height:54px; cursor:pointer; border-radius: 12px; border: 1px solid rgba(94,234,212,0.3);
+    background: var(--panel); color: var(--mint); font-size: 20px; font-weight: 700;
+    text-align: center; touch-action: none; user-select: none;
+  }
+  #btnFire { color: var(--amber); border-color: rgba(255,198,92,0.4); }
+  .touchBtn:active { background: rgba(94,234,212,0.15); }
+  .touchBtn:disabled {opacity:.35;cursor:default;}
+  button {font:inherit;}
+  .utility {background:#17334a;color:#d9fff3;border:1px solid #438076;border-radius:7px;padding:7px 12px;cursor:pointer;}
+  .overlayActions {display:flex;gap:10px;margin-top:12px;}
+  @media(max-width:360px){#startScreen{padding:15px;gap:13px}.fireOpt{padding:10px 8px;font-size:12px}.fireRow{gap:6px}#hud{left:2px;right:2px;font-size:10px}.utility{padding:6px}}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="game" tabindex="0" role="img" aria-label="별빛 순찰대 게임 화면"></canvas>
+
+    <div id="hud" class="hidden">
+      <div><span class="label">점수</span><span id="score">0</span> &nbsp; <span class="label">최고</span><span id="best">0</span></div>
+      <div><span class="label">목숨</span><span id="lives">3</span> &nbsp; <span class="label">웨이브</span><span id="wave">1</span></div><button id="btnPause" class="utility" aria-label="일시정지">Ⅱ</button>
+    </div>
+
+    <div id="overlay" class="hidden">
+      <h2 id="overlayTitle">일시정지</h2>
+      <p id="overlayHint">P 재개 · R 대기 화면으로</p><div class="overlayActions"><button id="btnResume" class="utility">계속하기</button><button id="btnRestart" class="utility">처음으로</button></div>
+    </div>
+
+    <div id="startScreen">
+      <h1>별빛 순찰대</h1>
+      <p class="sub">STAR PATROL — 좌우 이동, 연사로 편대를 막아내세요</p>
+      <div class="fireRow">
+        <button class="fireOpt active" data-fire="normal">보통 연사 (0.24s)</button>
+        <button class="fireOpt" data-fire="fast">빠른 연사 (0.16s)</button>
+      </div>
+      <button id="btnStart">출격</button>
+      <p class="keyHint">키보드: ← → 이동, Space 발사, P 일시정지, R 재시작 · 모바일: 하단 버튼 사용</p>
+    </div>
+  </div>
+
+  <div id="touchControls">
+    <button class="touchBtn" id="btnLeft" aria-label="왼쪽 이동">◀</button>
+    <button class="touchBtn" id="btnFire" aria-label="누르고 발사">발사</button>
+    <button class="touchBtn" id="btnRight" aria-label="오른쪽 이동">▶</button>
+  </div>
+</div>
+
+<script>
+/**
+ * StarPatrolEngine — 별빛 순찰대 · STAR PATROL 의 순수 게임 로직.
+ * DOM 의존성이 없으며 CommonJS(module.exports)와 브라우저 전역(StarPatrolEngine) 양쪽에서 쓸 수 있습니다.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.StarPatrolEngine = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // ---- 튜닝 상수 (단위: 논리 픽셀, 초) ---------------------------------
+  var WIDTH = 480;
+  var HEIGHT = 640;
+
+  var STATUS = { READY: 'ready', PLAYING: 'playing', PAUSED: 'paused', GAMEOVER: 'gameover' };
+
+  var FIRE_INTERVAL = { FAST: 0.16, NORMAL: 0.24 };
+
+  var PLAYER_SPEED = 260;         // px/s
+  var PLAYER_Y = HEIGHT - 56;
+  var PLAYER_RADIUS = 13;         // 충돌 반지름
+  var PLAYER_MARGIN = 24;         // 화면 가장자리 여유
+
+  var PLAYER_BULLET_SPEED = 560;  // px/s 위로
+  var PLAYER_BULLET_R = 4;
+
+  var ENEMY_BULLET_R = 4;
+  var ENEMY_BULLET_BASE_SPEED = 200;
+  var ENEMY_BULLET_SPEED_STEP = 12;
+  var ENEMY_BULLET_SPEED_MAX = 260;
+  var MAX_ENEMY_BULLETS = 6;
+
+  var INVULN_TIME = 1.5;
+  var LIVES_START = 3;
+
+  var ROWS = 4;
+  var COLS = 8;
+  var ENEMY_SPACING_X = 46;
+  var ENEMY_SPACING_Y = 38;
+  var ENEMY_TOP = 100;
+  var ENEMY_MARGIN_X = 42;
+  var ENEMY_RADIUS = 13;
+  var DYING_DURATION = 0.16;      // 격추 후 잔상이 보이는 시간(이 동안은 충돌 판정에서 제외)
+
+  var FORMATION_MARGIN = 20;
+  var FORMATION_BASE_SPEED = 40;
+  var FORMATION_SPEED_STEP = 6;
+  var FORMATION_SPEED_MAX = 88;
+
+  var DIVE_DOWN_TIME = 1.1;
+  var DIVE_UP_TIME = 0.9;
+  var DIVE_DUR = DIVE_DOWN_TIME + DIVE_UP_TIME;
+  var DIVE_FIRE_AT = 0.5;         // diveT/diveDur 가 이 값을 넘으면 한 번 발사
+  var DIVE_INTERVAL_BASE = 3.2;
+  var DIVE_INTERVAL_STEP = 0.25;
+  var DIVE_INTERVAL_MIN = 1.4;
+  var MAX_CONCURRENT_DIVERS_BASE = 1;
+  var MAX_CONCURRENT_DIVERS_CAP = 3;
+
+  var FORMATION_FIRE_MIN = 2.4;
+  var FORMATION_FIRE_MAX = 4.0;
+  var FORMATION_FIRE_STEP = 0.15;
+  var FORMATION_FIRE_FLOOR = 0.9;
+
+  var MAX_WAVE_SCALING = 6;       // 이 웨이브 이후로는 난이도가 더 오르지 않음(상한)
+  var WAVE_TRANSITION_TIME = 1.6;
+
+  var MAX_FRAME_DT = 0.1;
+  var SUBSTEP_DT = 1 / 120;
+
+  var SCORE_AMBER = 100;
+  var SCORE_CORAL = 150;
+
+  // ---- 순수 헬퍼 -------------------------------------------------------
+  function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
+
+  function effWave(wave) { return Math.min(wave, MAX_WAVE_SCALING); }
+
+  function formationSpeed(wave) {
+    var e = effWave(wave);
+    return Math.min(FORMATION_SPEED_MAX, FORMATION_BASE_SPEED + (e - 1) * FORMATION_SPEED_STEP);
+  }
+  function diveInterval(wave) {
+    var e = effWave(wave);
+    return Math.max(DIVE_INTERVAL_MIN, DIVE_INTERVAL_BASE - (e - 1) * DIVE_INTERVAL_STEP);
+  }
+  function maxConcurrentDivers(wave) {
+    var e = effWave(wave);
+    return Math.min(MAX_CONCURRENT_DIVERS_CAP, MAX_CONCURRENT_DIVERS_BASE + Math.floor((e - 1) / 2));
+  }
+  function enemyBulletSpeed(wave) {
+    var e = effWave(wave);
+    return Math.min(ENEMY_BULLET_SPEED_MAX, ENEMY_BULLET_BASE_SPEED + (e - 1) * ENEMY_BULLET_SPEED_STEP);
+  }
+  function formationFireInterval(wave, rng) {
+    var e = effWave(wave);
+    var lo = Math.max(FORMATION_FIRE_FLOOR, FORMATION_FIRE_MIN - (e - 1) * FORMATION_FIRE_STEP);
+    var hi = Math.max(lo + 0.2, FORMATION_FIRE_MAX - (e - 1) * FORMATION_FIRE_STEP);
+    var u = clamp(Number(rng()) || 0, 0, 1);
+    return lo + u * (hi - lo);
+  }
+
+  function bezierPoint(p0, p1, p2, t) {
+    var mt = 1 - t;
+    return {
+      x: mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x,
+      y: mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y
+    };
+  }
+
+  /** 원과 수직 선분(x 고정, yA~yB)이 충돌하는지 검사. 빠른 총알의 스킵(터널링) 방지용. */
+  function circleVsVerticalSegment(cx, cy, r, x, yA, yB, r2) {
+    var closestY = clamp(cy, Math.min(yA, yB), Math.max(yA, yB));
+    var dx = cx - x, dy = cy - closestY;
+    var rr = r + r2;
+    return dx * dx + dy * dy <= rr * rr;
+  }
+
+  function circleHit(ax, ay, ar, bx, by, br) {
+    var dx = ax - bx, dy = ay - by, rr = ar + br;
+    return dx * dx + dy * dy <= rr * rr;
+  }
+
+  // ---- 상태 -------------------------------------------------------------
+
+  function createState(opts) {
+    opts = opts || {};
+    var s = {
+      rng: opts.rng || Math.random,
+      best: Number.isFinite(opts.best) && opts.best > 0 ? Math.min(999999999,Math.floor(opts.best)) : 0,
+      fireInterval: opts.fireInterval === 'fast' ? FIRE_INTERVAL.FAST : FIRE_INTERVAL.NORMAL
+    };
+    resetRun(s);
+    return s;
+  }
+
+  function spawnFormation(s, wave) {
+    var enemies = [];
+    var id = 0;
+    for (var row = 0; row < ROWS; row++) {
+      for (var col = 0; col < COLS; col++) {
+        var homeX = col * ENEMY_SPACING_X;
+        var homeY = row * ENEMY_SPACING_Y;
+        enemies.push({
+          id: id++,
+          row: row, col: col,
+          homeX: homeX, homeY: homeY,
+          baseX: ENEMY_MARGIN_X + homeX,
+          x: ENEMY_MARGIN_X + homeX, y: ENEMY_TOP + homeY,
+          kind: row % 2 === 0 ? 'amber' : 'coral',
+          state: 'formation',
+          alive: true,
+          dyingT: 0,
+          diveT: 0, diveDur: DIVE_DUR, p0: null, p1: null, p2: null, firedThisDive: false
+        });
+      }
+    }
+    s.enemies = enemies;
+    var rightmostBase = ENEMY_MARGIN_X + (COLS - 1) * ENEMY_SPACING_X;
+    s.formation = {
+      offsetX: 0, dir: 1,
+      minOffset: FORMATION_MARGIN - ENEMY_MARGIN_X,
+      maxOffset: WIDTH - FORMATION_MARGIN - rightmostBase
+    };
+    s.diveTimer = diveInterval(wave) * 0.6;
+    s.formationFireTimer = formationFireInterval(wave, s.rng);
+  }
+
+  /** 최고 기록과 rng, 발사 간격 설정은 유지하고 나머지를 전부 새 판으로 되돌립니다. */
+  function resetRun(s) {
+    s.status = STATUS.READY;
+    s.score = 0;
+    s.runStartBest = s.best;
+    s.newBest = false;
+    s.lives = LIVES_START;
+    s.wave = 1;
+    s.transitioning = false;
+    s.transitionTimer = 0;
+    s.elapsed = 0;
+    s.player = { x: WIDTH / 2, y: PLAYER_Y, alive: true, invuln: 0, cooldown: 0 };
+    s.input = { left: false, right: false, fire: false };
+    s.playerBullets = [];
+    s.enemyBullets = [];
+    s.particles = [];
+    spawnFormation(s, s.wave);
+    return s;
+  }
+
+  // ---- 입력/제어 ---------------------------------------------------------
+
+  function setFireInterval(s, key) {
+    if (s.status !== STATUS.READY) return false;
+    s.fireInterval = key === 'fast' ? FIRE_INTERVAL.FAST : FIRE_INTERVAL.NORMAL;
+    return true;
+  }
+  function start(s) {
+    if (s.status !== STATUS.READY) return false;
+    s.status = STATUS.PLAYING;
+    return true;
+  }
+  function setLeft(s, v) { s.input.left = !!v; }
+  function setRight(s, v) { s.input.right = !!v; }
+  function setFire(s, v) { s.input.fire = !!v; }
+  function clearInput(s) { s.input.left = false; s.input.right = false; s.input.fire = false; }
+
+  function pause(s) {
+    if (s.status !== STATUS.PLAYING) return false;
+    s.status = STATUS.PAUSED;
+    clearInput(s);
+    return true;
+  }
+  function resume(s) {
+    if (s.status !== STATUS.PAUSED) return false;
+    s.status = STATUS.PLAYING;
+    return true;
+  }
+  /** 일시정지 또는 게임 오버 상태에서만 허용. 대기 화면으로 돌아가고, 총알/입자/입력이 모두 사라집니다. */
+  function restart(s) {
+    if (s.status !== STATUS.PAUSED && s.status !== STATUS.GAMEOVER) return false;
+    resetRun(s);
+    return true;
+  }
+
+  // ---- 점수/게임오버 ------------------------------------------------------
+
+  function addScore(s, pts) {
+    s.score += pts;
+    if (s.score > s.best) s.best = s.score;
+    s.newBest = s.score > s.runStartBest;
+  }
+
+  function gameOver(s) {
+    s.status = STATUS.GAMEOVER;
+    clearInput(s);
+  }
+
+  function spawnParticles(s, x, y, color, count) {
+    for (var i = 0; i < count; i++) {
+      var a = s.rng() * Math.PI * 2;
+      var sp = 60 + s.rng() * 140;
+      s.particles.push({
+        x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        life: 0.28 + s.rng() * 0.3, maxLife: 0.6, color: color
+      });
+    }
+  }
+
+  function killEnemy(s, e) {
+    if (!e.alive) return;
+    e.alive = false;
+    e.state = 'dying';
+    e.dyingT = 0;
+    addScore(s, e.kind === 'coral' ? SCORE_CORAL : SCORE_AMBER);
+    spawnParticles(s, e.x, e.y, e.kind === 'coral' ? '#ff8a6b' : '#ffc65c', 10);
+  }
+
+  function hurtPlayer(s) {
+    var p = s.player;
+    if (p.invuln > 0 || !p.alive) return;
+    s.lives--;
+    p.invuln = INVULN_TIME;
+    spawnParticles(s, p.x, p.y, '#cdeee3', 14);
+    if (s.lives <= 0) {
+      s.lives = 0;
+      p.alive = false;
+      gameOver(s);
+    }
+  }
+
+  // ---- 다이빙 -------------------------------------------------------------
+
+  function startDive(s, e) {
+    e.state = 'diving';
+    e.diveT = 0;
+    e.firedThisDive = false;
+    e.p0 = { x: e.x, y: e.y };
+    var targetX = clamp(s.player.x + (s.rng() * 2 - 1) * 70, 30, WIDTH - 30);
+    e.p1 = { x: targetX, y: HEIGHT - 150 };
+    e.p2 = { x: e.baseX, y: -30 };
+  }
+
+  // ---- 시뮬레이션(하위 단계 h초) --------------------------------------------
+
+  function simulate(s, h) {
+    var p = s.player;
+    s.elapsed += h;
+
+    // 플레이어 이동
+    var vx = 0;
+    if (s.input.left && !s.input.right) vx = -PLAYER_SPEED;
+    else if (s.input.right && !s.input.left) vx = PLAYER_SPEED;
+    p.x = clamp(p.x + vx * h, PLAYER_MARGIN, WIDTH - PLAYER_MARGIN);
+    if (p.invuln > 0) p.invuln = Math.max(0, p.invuln - h);
+    if (p.cooldown > 0) p.cooldown = Math.max(0, p.cooldown - h);
+
+    // 발사
+    if (p.alive && s.input.fire && p.cooldown <= 0) {
+      s.playerBullets.push({ x: p.x, y: p.y - 18, vy: -PLAYER_BULLET_SPEED });
+      p.cooldown = s.fireInterval;
+    }
+
+    // 총알 이동 (기록: prevY → 스윕 충돌에 사용)
+    var i;
+    for (i = 0; i < s.playerBullets.length; i++) {
+      var pb = s.playerBullets[i];
+      pb.prevY = pb.y;
+      pb.y += pb.vy * h;
+    }
+    for (i = 0; i < s.enemyBullets.length; i++) {
+      var eb = s.enemyBullets[i];
+      eb.prevY = eb.y;
+      eb.y += eb.vy * h;
+    }
+
+    // 편대 이동
+    var f = s.formation;
+    var fs = formationSpeed(s.wave);
+    f.offsetX += f.dir * fs * h;
+    if (f.offsetX > f.maxOffset) { f.offsetX = f.maxOffset; f.dir = -1; }
+    if (f.offsetX < f.minOffset) { f.offsetX = f.minOffset; f.dir = 1; }
+
+    // 적 갱신
+    var divingCount = 0;
+    for (i = 0; i < s.enemies.length; i++) {
+      var e = s.enemies[i];
+      if (e.state === 'formation') {
+        e.x = f.offsetX + e.baseX;
+        e.y = ENEMY_TOP + e.homeY;
+      } else if (e.state === 'diving') {
+        divingCount++;
+        e.diveT += h;
+        var t = clamp(e.diveT / e.diveDur, 0, 1);
+        var pos = bezierPoint(e.p0, e.p1, e.p2, t);
+        e.x = pos.x; e.y = pos.y;
+        if (!e.firedThisDive && t >= DIVE_FIRE_AT && s.enemyBullets.length < MAX_ENEMY_BULLETS) {
+          e.firedThisDive = true;
+          s.enemyBullets.push({ x: e.x, y: e.y, prevY: e.y, vy: enemyBulletSpeed(s.wave) });
+        }
+        if (e.diveT >= e.diveDur) e.state = 'formation';
+      } else if (e.state === 'dying') {
+        e.dyingT += h;
+      }
+    }
+
+    if (!s.transitioning) {
+      // 다이빙 발동
+      s.diveTimer -= h;
+      if (s.diveTimer <= 0 && divingCount < maxConcurrentDivers(s.wave)) {
+        var candidates = [];
+        for (i = 0; i < s.enemies.length; i++) if (s.enemies[i].state === 'formation') candidates.push(s.enemies[i]);
+        if (candidates.length) {
+          var idx = Math.min(candidates.length - 1, Math.floor(s.rng() * candidates.length));
+          startDive(s, candidates[idx]);
+        }
+        s.diveTimer = diveInterval(s.wave);
+      }
+
+      // 편대 사격
+      s.formationFireTimer -= h;
+      if (s.formationFireTimer <= 0) {
+        s.formationFireTimer = formationFireInterval(s.wave, s.rng);
+        if (s.enemyBullets.length < MAX_ENEMY_BULLETS) {
+          var shooters = [];
+          for (i = 0; i < s.enemies.length; i++) if (s.enemies[i].state === 'formation') shooters.push(s.enemies[i]);
+          if (shooters.length) {
+            var si = Math.min(shooters.length - 1, Math.floor(s.rng() * shooters.length));
+            var shooter = shooters[si];
+            s.enemyBullets.push({ x: shooter.x, y: shooter.y, prevY: shooter.y, vy: enemyBulletSpeed(s.wave) });
+          }
+        }
+      }
+    }
+
+    // 충돌: 플레이어 총알 vs 적
+    for (i = 0; i < s.playerBullets.length; i++) {
+      var b = s.playerBullets[i];
+      if (b.dead) continue;
+      for (var j = 0; j < s.enemies.length; j++) {
+        var en = s.enemies[j];
+        if (!en.alive) continue;
+        if (circleVsVerticalSegment(en.x, en.y, ENEMY_RADIUS, b.x, b.prevY, b.y, PLAYER_BULLET_R)) {
+          b.dead = true;
+          killEnemy(s, en);
+          break;
+        }
+      }
+    }
+
+    // 충돌: 적 총알 vs 플레이어
+    if (p.alive) {
+      for (i = 0; i < s.enemyBullets.length; i++) {
+        var eb2 = s.enemyBullets[i];
+        if (eb2.dead) continue;
+        if (circleVsVerticalSegment(p.x, p.y, PLAYER_RADIUS, eb2.x, eb2.prevY, eb2.y, ENEMY_BULLET_R)) {
+          eb2.dead = true;
+          hurtPlayer(s);
+        }
+      }
+    }
+
+    // 충돌: 적 vs 플레이어 (몸통 박치기)
+    if (p.alive) {
+      for (i = 0; i < s.enemies.length; i++) {
+        var en2 = s.enemies[i];
+        if (!en2.alive) continue;
+        if (circleHit(p.x, p.y, PLAYER_RADIUS, en2.x, en2.y, ENEMY_RADIUS)) {
+          killEnemy(s, en2);
+          hurtPlayer(s);
+        }
+      }
+    }
+
+    // 정리: 화면 밖/소멸된 것들 제거
+    s.playerBullets = s.playerBullets.filter(function (bb) { return !bb.dead && bb.y > -20; });
+    s.enemyBullets = s.enemyBullets.filter(function (bb) { return !bb.dead && bb.y < HEIGHT + 20; });
+    s.enemies = s.enemies.filter(function (ee) { return ee.state !== 'dying' || ee.dyingT < DYING_DURATION; });
+    s.particles = s.particles.filter(function (pp) { return pp.life > 0; });
+    for (i = 0; i < s.particles.length; i++) {
+      var pt = s.particles[i];
+      pt.x += pt.vx * h; pt.y += pt.vy * h; pt.life -= h;
+    }
+
+    // 웨이브 전환
+    if (!s.transitioning) {
+      var anyLeft = false;
+      for (i = 0; i < s.enemies.length; i++) if (s.enemies[i].state !== 'dying') { anyLeft = true; break; }
+      if (!anyLeft && s.enemies.length === 0 && s.status === STATUS.PLAYING) {
+        s.transitioning = true;
+        s.transitionTimer = WAVE_TRANSITION_TIME;
+        s.enemyBullets = []; s.playerBullets = [];
+      }
+    } else {
+      s.transitionTimer -= h;
+      if (s.transitionTimer <= 0) {
+        s.wave++;
+        spawnFormation(s, s.wave);
+        s.transitioning = false;
+      }
+    }
+  }
+
+  /** 프레임 시간 dt(초)만큼 진행. dt 는 [0, MAX_FRAME_DT] 로 제한되고 하위 단계로 쪼개집니다. */
+  function step(s, dt) {
+    dt = Number(dt);
+    if (!(dt > 0)) return;
+    if (s.status !== STATUS.PLAYING) return; // 대기·일시정지·게임오버는 완전 정지
+    dt = Math.min(dt, MAX_FRAME_DT);
+    var n = Math.ceil(dt / SUBSTEP_DT - 1e-9);
+    var h = dt / n;
+    for (var i = 0; i < n && s.status === STATUS.PLAYING; i++) simulate(s, h);
+  }
+
+  return {
+    WIDTH: WIDTH, HEIGHT: HEIGHT, STATUS: STATUS, FIRE_INTERVAL: FIRE_INTERVAL,
+    PLAYER_SPEED: PLAYER_SPEED, PLAYER_Y: PLAYER_Y, PLAYER_RADIUS: PLAYER_RADIUS, PLAYER_MARGIN: PLAYER_MARGIN,
+    PLAYER_BULLET_SPEED: PLAYER_BULLET_SPEED, PLAYER_BULLET_R: PLAYER_BULLET_R,
+    ENEMY_BULLET_R: ENEMY_BULLET_R, MAX_ENEMY_BULLETS: MAX_ENEMY_BULLETS,
+    INVULN_TIME: INVULN_TIME, LIVES_START: LIVES_START,
+    ROWS: ROWS, COLS: COLS, ENEMY_SPACING_X: ENEMY_SPACING_X, ENEMY_SPACING_Y: ENEMY_SPACING_Y,
+    ENEMY_TOP: ENEMY_TOP, ENEMY_MARGIN_X: ENEMY_MARGIN_X, ENEMY_RADIUS: ENEMY_RADIUS, DYING_DURATION: DYING_DURATION,
+    FORMATION_MARGIN: FORMATION_MARGIN,
+    DIVE_DUR: DIVE_DUR, MAX_WAVE_SCALING: MAX_WAVE_SCALING, WAVE_TRANSITION_TIME: WAVE_TRANSITION_TIME,
+    MAX_FRAME_DT: MAX_FRAME_DT, SUBSTEP_DT: SUBSTEP_DT,
+    SCORE_AMBER: SCORE_AMBER, SCORE_CORAL: SCORE_CORAL,
+    formationSpeed: formationSpeed, diveInterval: diveInterval, maxConcurrentDivers: maxConcurrentDivers,
+    enemyBulletSpeed: enemyBulletSpeed, formationFireInterval: formationFireInterval,
+    circleVsVerticalSegment: circleVsVerticalSegment, circleHit: circleHit,
+    createState: createState, restart: restart, setFireInterval: setFireInterval, start: start,
+    setLeft: setLeft, setRight: setRight, setFire: setFire, clearInput: clearInput,
+    pause: pause, resume: resume, step: step
+  };
+});
+
+</script>
+<script>
+/* app.js — 별빛 순찰대 화면/입력 레이어. 엔진(engine.js)은 순수 로직만 담당합니다. */
+(function () {
+  'use strict';
+  var E = window.StarPatrolEngine;
+  var BEST_KEY = 'starPatrolBest';
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var startScreen = document.getElementById('startScreen');
+  var hud = document.getElementById('hud');
+  var scoreEl = document.getElementById('score');
+  var bestEl = document.getElementById('best');
+  var livesEl = document.getElementById('lives');
+  var waveEl = document.getElementById('wave');
+  var overlay = document.getElementById('overlay');
+  var overlayTitle = document.getElementById('overlayTitle');
+  var overlayHint = document.getElementById('overlayHint');
+  var btnStart = document.getElementById('btnStart');
+  var fireButtons = document.querySelectorAll('.fireOpt');
+  var btnLeft = document.getElementById('btnLeft');
+  var btnRight = document.getElementById('btnRight');
+  var btnFire = document.getElementById('btnFire');
+
+  function loadBest() {
+    try { var n = Number(localStorage.getItem(BEST_KEY)); return Number.isFinite(n) && n > 0 ? Math.min(999999999, Math.floor(n)) : 0; }
+    catch (e) { return 0; }
+  }
+  function saveBest(v) {
+    try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) { /* 저장 불가 시 무시 */ }
+  }
+
+  var fireKey = 'normal';
+  var state = E.createState({ best: loadBest(), fireInterval: fireKey });
+  var lastBestSaved = state.best;
+
+  fireButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      fireKey = btn.dataset.fire;
+      fireButtons.forEach(function (b) { b.classList.toggle('active', b === btn); });
+      E.setFireInterval(state, fireKey);
+    });
+  });
+
+  btnStart.addEventListener('click', function () {
+    clearAllInputs();
+    E.start(state);
+    startScreen.classList.add('hidden');
+    hud.classList.remove('hidden');
+    canvas.focus();
+  });
+
+  // ---- 키보드 입력 --------------------------------------------------------
+  var keyLeft = false, keyRight = false, keyFire = false;
+  function syncInput() {
+    E.setLeft(state, keyLeft);
+    E.setRight(state, keyRight);
+    E.setFire(state, keyFire);
+  }
+  window.addEventListener('keydown', function (ev) {
+    if (['ArrowLeft','ArrowRight','Space'].includes(ev.code)) ev.preventDefault();
+    if (ev.repeat) return;
+    if (ev.code === 'ArrowLeft' || ev.code === 'KeyA') { keyLeft = true; syncInput(); }
+    else if (ev.code === 'ArrowRight' || ev.code === 'KeyD') { keyRight = true; syncInput(); }
+    else if (ev.code === 'Space') { keyFire = true; syncInput(); ev.preventDefault(); }
+    else if ((ev.code === 'KeyP' || ev.code === 'Escape')) togglePause();
+    else if (ev.code === 'KeyR') doRestart();
+  });
+  window.addEventListener('keyup', function (ev) {
+    if (ev.code === 'ArrowLeft' || ev.code === 'KeyA') { keyLeft = false; syncInput(); }
+    else if (ev.code === 'ArrowRight' || ev.code === 'KeyD') { keyRight = false; syncInput(); }
+    else if (ev.code === 'Space') { keyFire = false; syncInput(); }
+  });
+
+  // ---- 터치/포인터 버튼 ----------------------------------------------------
+  var pointerLeft = false, pointerRight = false, pointerFire = false;
+  function syncPointerInput() {
+    E.setLeft(state, keyLeft || pointerLeft);
+    E.setRight(state, keyRight || pointerRight);
+    E.setFire(state, keyFire || pointerFire);
+  }
+  // 키보드 경로와 포인터 경로가 각자 최신값을 병합해서 반영하도록 통일
+  function makeSyncAll() {
+    E.setLeft(state, keyLeft || pointerLeft);
+    E.setRight(state, keyRight || pointerRight);
+    E.setFire(state, keyFire || pointerFire);
+  }
+  syncInput = makeSyncAll;
+
+  function bindHold(el, setter) {
+    var ids = new Set();
+    function off(ev) { ids.delete(ev.pointerId); setter(ids.size > 0); makeSyncAll(); }
+    el.addEventListener('pointerdown', function(ev) {
+      if (state.status !== E.STATUS.PLAYING || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
+      ev.preventDefault(); ids.add(ev.pointerId); el.setPointerCapture(ev.pointerId);
+      setter(true); makeSyncAll();
+    });
+    ['pointerup','pointercancel','lostpointercapture'].forEach(function(type) { el.addEventListener(type, off); });
+    return function() { ids.clear(); setter(false); };
+  }
+  var offLeft = bindHold(btnLeft, function (v) { pointerLeft = v; });
+  var offRight = bindHold(btnRight, function (v) { pointerRight = v; });
+  var offFire = bindHold(btnFire, function (v) { pointerFire = v; });
+
+  function clearAllInputs() {
+    offLeft(); offRight(); offFire();
+    keyLeft = keyRight = keyFire = false;
+    pointerLeft = pointerRight = pointerFire = false;
+    E.clearInput(state);
+  }
+
+  window.addEventListener('blur', function () {
+    clearAllInputs();
+    if (state.status === E.STATUS.PLAYING) E.pause(state);
+    render();
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      clearAllInputs();
+      if (state.status === E.STATUS.PLAYING) E.pause(state);
+      render();
+    }
+  });
+
+  function togglePause() {
+    if (state.status === E.STATUS.PLAYING) { clearAllInputs(); E.pause(state); render(); }
+    else if (state.status === E.STATUS.PAUSED) { clearAllInputs(); E.resume(state); }
+  }
+  function doRestart() {
+    if (state.status !== E.STATUS.PAUSED && state.status !== E.STATUS.GAMEOVER) return;
+    clearAllInputs();
+    E.restart(state);
+    startScreen.classList.remove('hidden');
+    hud.classList.add('hidden');
+    fireButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.fire === fireKey); });
+  }
+
+  document.getElementById('btnPause').addEventListener('click', togglePause);
+  document.getElementById('btnResume').addEventListener('click', togglePause);
+  document.getElementById('btnRestart').addEventListener('click', doRestart);
+
+  // ---- 렌더링 --------------------------------------------------------------
+  var COLOR_BG_TOP = '#0a1730';
+  var COLOR_BG_BOT = '#071022';
+  var COLOR_MINT = '#5eead4';
+  var COLOR_AMBER = '#ffc65c';
+  var COLOR_CORAL = '#ff8a6b';
+
+  function resize() {
+    var wrap = canvas.parentElement;
+    var scale = Math.min(wrap.clientWidth / E.WIDTH, wrap.clientHeight / E.HEIGHT);
+    scale = Math.max(scale, 0.1);
+    canvas.style.width = Math.floor(E.WIDTH * scale) + 'px';
+    canvas.style.height = Math.floor(E.HEIGHT * scale) + 'px';
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(E.WIDTH * scale * dpr);
+    canvas.height = Math.floor(E.HEIGHT * scale * dpr);
+    ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+
+  var starField = null;
+  function buildStars() {
+    starField = [];
+    for (var i = 0; i < 70; i++) {
+      starField.push({
+        x: Math.random() * E.WIDTH, y: Math.random() * E.HEIGHT,
+        r: 0.6 + Math.random() * 1.4, tw: Math.random() * Math.PI * 2
+      });
+    }
+  }
+  buildStars();
+
+  function drawBackground(t) {
+    var g = ctx.createLinearGradient(0, 0, 0, E.HEIGHT);
+    g.addColorStop(0, COLOR_BG_TOP);
+    g.addColorStop(1, COLOR_BG_BOT);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, E.WIDTH, E.HEIGHT);
+    for (var i = 0; i < starField.length; i++) {
+      var s = starField[i];
+      var a = reduced ? 0.6 : 0.35 + 0.5 * Math.abs(Math.sin(t * 1.5 + s.tw));
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#cfe8ff';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawPlayer(p) {
+    if (!p.alive) return;
+    if (!reduced && p.invuln > 0 && Math.floor(p.invuln * 6) % 2 === 0) return; // 무적 점멸
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.fillStyle = '#ffbd69';
+    ctx.beginPath(); ctx.moveTo(-5,12);ctx.lineTo(0,24+(reduced?0:4*Math.sin(state.elapsed*25)));ctx.lineTo(5,12);ctx.fill();
+    ctx.fillStyle = COLOR_MINT;
+    ctx.beginPath();ctx.moveTo(0,-20);ctx.lineTo(9,-2);ctx.lineTo(20,11);ctx.lineTo(8,8);ctx.lineTo(5,15);ctx.lineTo(-5,15);ctx.lineTo(-8,8);ctx.lineTo(-20,11);ctx.lineTo(-9,-2);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#eafff8';ctx.beginPath();ctx.moveTo(0,-17);ctx.lineTo(4,7);ctx.lineTo(-4,7);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#17364c';ctx.fillRect(-3,-7,6,9);
+    if(p.invuln>0){ctx.strokeStyle='#b9fff0';ctx.beginPath();ctx.arc(0,0,25,0,Math.PI*2);ctx.stroke();}
+    ctx.restore();
+  }
+
+  function drawEnemy(e) {
+    var color = e.kind === 'coral' ? COLOR_CORAL : COLOR_AMBER;
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    if (e.state === 'dying') {
+      var k = 1 - e.dyingT / E.DYING_DURATION;
+      ctx.globalAlpha = Math.max(0, k);
+      ctx.scale(1 + (1 - k) * 0.6, 1 + (1 - k) * 0.6);
+    }
+    ctx.fillStyle = color;
+    ctx.beginPath();ctx.moveTo(0,13);ctx.lineTo(-7,5);ctx.lineTo(-17,9);ctx.lineTo(-12,-7);ctx.lineTo(-5,-3);ctx.lineTo(0,-11);ctx.lineTo(5,-3);ctx.lineTo(12,-7);ctx.lineTo(17,9);ctx.lineTo(7,5);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#fff1c9';ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(5,2);ctx.lineTo(0,8);ctx.lineTo(-5,2);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#132438';ctx.fillRect(-3,-1,6,3);
+    ctx.restore();
+  }
+
+  function drawBullet(b, color, r) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(b.x-r/2, b.y-7, r, 14, 2);
+    ctx.fill();
+  }
+
+  function drawParticle(pt) {
+    ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+    ctx.fillStyle = pt.color;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function render() {
+    drawBackground(state.elapsed);
+    for (var i = 0; i < state.enemies.length; i++) drawEnemy(state.enemies[i]);
+    for (i = 0; i < state.playerBullets.length; i++) drawBullet(state.playerBullets[i], COLOR_MINT, E.PLAYER_BULLET_R);
+    for (i = 0; i < state.enemyBullets.length; i++) drawBullet(state.enemyBullets[i], COLOR_CORAL, E.ENEMY_BULLET_R);
+    for (i = 0; i < state.particles.length; i += reduced ? 5 : 1) drawParticle(state.particles[i]);
+    drawPlayer(state.player);
+
+    document.getElementById('btnResume').hidden = state.status !== E.STATUS.PAUSED;
+    document.getElementById('btnPause').disabled = state.status !== E.STATUS.PLAYING;
+    [btnLeft,btnRight,btnFire].forEach(function(b){ b.disabled = state.status !== E.STATUS.PLAYING; });
+    if (state.transitioning) {ctx.fillStyle='#eafff8';ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillText('WAVE CLEAR',E.WIDTH/2,E.HEIGHT/2);}
+    scoreEl.textContent = String(state.score);
+    bestEl.textContent = String(state.best);
+    livesEl.textContent = String(state.lives);
+    waveEl.textContent = String(state.wave);
+
+    if (state.status === E.STATUS.PAUSED) {
+      overlay.classList.remove('hidden');
+      overlayTitle.textContent = '일시정지';
+      overlayHint.textContent = 'P 재개 · R 대기 화면으로';
+    } else if (state.status === E.STATUS.GAMEOVER) {
+      overlay.classList.remove('hidden');
+      overlayTitle.textContent = '게임 종료';
+      overlayHint.textContent = (state.newBest ? '신기록! · ' : '') + 'R 다시 시작';
+    } else {
+      overlay.classList.add('hidden');
+    }
+
+    if (state.best > lastBestSaved) {
+      lastBestSaved = state.best;
+      saveBest(state.best);
+    }
+  }
+
+  var lastT = null;
+  function loop(t) {
+    if (lastT == null) lastT = t;
+    var dt = (t - lastT) / 1000;
+    lastT = t;
+    E.step(state, dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  resize();
+  render();
+  requestAnimationFrame(loop);
+})();
+
+</script>
+</body>
+</html>

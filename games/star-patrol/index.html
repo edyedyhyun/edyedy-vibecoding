@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>별빛 순찰대 · Star Patrol</title>
+<style>
+  :root {
+    --navy-deep: #071022;
+    --navy: #0a1730;
+    --panel: #0f1f3d;
+    --mint: #5eead4;
+    --amber: #ffc65c;
+    --coral: #ff8a6b;
+    --text: #eaf6f2;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; background: var(--navy-deep); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    overscroll-behavior: none; user-select: none;
+  }
+  #app {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 8px; gap:6px;
+  }
+  #stage {
+    position: relative; width: min(480px, calc((100dvh - 100px) * .75), calc(100vw - 16px)); aspect-ratio: 3 / 4; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center; min-height: 0;
+  }
+  canvas#game {
+    display: block; background: var(--navy-deep); border-radius: 10px;
+    box-shadow: 0 0 0 1px rgba(94,234,212,0.25), 0 10px 40px rgba(0,0,0,0.5);
+    touch-action: none;
+  }
+  #hud {
+    position: absolute; top: 6px; left: 12px; right: 12px;
+    display: flex; justify-content: space-between; font-size: 12px; padding:8px; background:rgba(7,16,34,.9); border-radius:8px;
+    letter-spacing: 0.02em; pointer-events: auto; text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  }
+  #hud.hidden { display: none; }
+  #hud span.label { color: var(--mint); margin-right: 4px; }
+  #startScreen {
+    position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px; text-align: center;
+    background: rgba(7,16,34,.82);
+    padding: 24px;
+  }
+  #startScreen.hidden { display: none; }
+  #startScreen h1 { margin: 0; font-size: 28px; color: var(--mint); letter-spacing: 0.05em; }
+  #startScreen p.sub { margin: 0; opacity: 0.75; font-size: 13px; }
+  .fireRow { display: flex; gap: 10px; }
+  .fireOpt {
+    padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(94,234,212,0.4);
+    background: var(--panel); color: var(--text); font-size: 14px; cursor: pointer;
+  }
+  .fireOpt.active { background: var(--mint); color: var(--navy-deep); font-weight: 700; border-color: var(--mint); }
+  #btnStart {
+    padding: 14px 40px; font-size: 18px; font-weight: 700; border-radius: 10px; border: none;
+    background: var(--amber); color: var(--navy-deep); cursor: pointer;
+    box-shadow: 0 6px 20px rgba(255,198,92,0.35);
+  }
+  .keyHint { font-size: 12px; opacity: 0.6; max-width: 320px; line-height: 1.5; }
+  #overlay {
+    position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 8px;
+    background: rgba(7,16,34,0.40); text-align: center;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h2 { text-shadow:0 2px 8px #000; margin: 0; color: var(--coral); font-size: 24px; }
+  #overlay p { margin: 0; font-size: 13px; opacity: 0.85; }
+  #touchControls {
+    display: flex; gap: 10px; width: 100%; max-width: 480px; padding: 10px 4px 4px;
+  }
+  .touchBtn {
+    flex: 1; padding: 14px 0; min-height:54px; cursor:pointer; border-radius: 12px; border: 1px solid rgba(94,234,212,0.3);
+    background: var(--panel); color: var(--mint); font-size: 20px; font-weight: 700;
+    text-align: center; touch-action: none; user-select: none;
+  }
+  #btnFire { color: var(--amber); border-color: rgba(255,198,92,0.4); }
+  .touchBtn:active { background: rgba(94,234,212,0.15); }
+  .touchBtn:disabled {opacity:.35;cursor:default;}
+  button {font:inherit;}
+  .utility {background:#17334a;color:#d9fff3;border:1px solid #438076;border-radius:7px;padding:7px 12px;cursor:pointer;}
+  .overlayActions {display:flex;gap:10px;margin-top:12px;}
+  @media(max-width:360px){#startScreen{padding:15px;gap:13px}.fireOpt{padding:10px 8px;font-size:12px}.fireRow{gap:6px}#hud{left:2px;right:2px;font-size:10px}.utility{padding:6px}}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="game" tabindex="0" role="img" aria-label="별빛 순찰대 게임 화면"></canvas>
+
+    <div id="hud" class="hidden">
+      <div><span class="label">점수</span><span id="score">0</span> &nbsp; <span class="label">최고</span><span id="best">0</span></div>
+      <div><span class="label">목숨</span><span id="lives">3</span> &nbsp; <span class="label">웨이브</span><span id="wave">1</span></div><button id="btnPause" class="utility" aria-label="일시정지">Ⅱ</button>
+    </div>
+
+    <div id="overlay" class="hidden">
+      <h2 id="overlayTitle">일시정지</h2>
+      <p id="overlayHint">P 재개 · R 대기 화면으로</p><div class="overlayActions"><button id="btnResume" class="utility">계속하기</button><button id="btnRestart" class="utility">처음으로</button></div>
+    </div>
+
+    <div id="startScreen">
+      <h1>별빛 순찰대</h1>
+      <p class="sub">STAR PATROL — 좌우 이동, 연사로 편대를 막아내세요</p>
+      <div class="fireRow">
+        <button class="fireOpt active" data-fire="normal">보통 연사 (0.24s)</button>
+        <button class="fireOpt" data-fire="fast">빠른 연사 (0.16s)</button>
+      </div>
+      <button id="btnStart">출격</button>
+      <p class="keyHint">키보드: ← → 이동, Space 발사, P 일시정지, R 재시작 · 모바일: 하단 버튼 사용</p>
+    </div>
+  </div>
+
+  <div id="touchControls">
+    <button class="touchBtn" id="btnLeft" aria-label="왼쪽 이동">◀</button>
+    <button class="touchBtn" id="btnFire" aria-label="누르고 발사">발사</button>
+    <button class="touchBtn" id="btnRight" aria-label="오른쪽 이동">▶</button>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
