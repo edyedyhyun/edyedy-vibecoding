@@ -1,0 +1,15 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),Game=require('./engine');
+const make=()=>{const g=new Game();g.start();return g;};
+const cut=(g,x=14)=>{g.player={x,y:0};for(let i=0;i<23;i++)g.move(0,1);};
+test('safe border is excluded from percent; ready does not move',()=>{const g=new Game();g.move(0,1);assert.equal(g.player.y,0);assert.equal(g.percent(),0);});
+test('unfinished trail is not claimed',()=>{const g=make();g.move(0,1);g.move(0,1);assert.equal(g.percent(),0);assert.equal(g.trail.length,2);});
+test('closing line fills only component without any enemy',()=>{const g=make();g.enemies=[{x:20,y:4,dx:1,dy:1},{x:22,y:10,dx:-1,dy:1}];cut(g);assert.equal(g.grid[5][5],1);assert.equal(g.grid[5][20],0);assert.equal(g.percent(),14/26*100);assert.equal(g.captures,1);});
+test('enemies on both sides preserve both regions',()=>{const g=make();cut(g);assert.equal(g.grid[5][5],0);assert.equal(g.grid[5][20],0);assert.equal(g.percent(),1/26*100);});
+test('trail hit removes only pending trail and restores safe anchor',()=>{const g=make();g.grid[2][2]=1;g.move(0,1);g.move(0,1);g.hit();assert.equal(g.lives,2);assert.deepEqual(g.player,{x:14,y:0});assert.equal(g.grid[1][14],0);assert.equal(g.grid[2][2],1);});
+test('player stepping onto enemy loses once',()=>{const g=make();g.enemies=[{x:14,y:1,dx:1,dy:1}];g.move(0,1);assert.equal(g.lives,2);assert.equal(g.trail.length,0);});
+test('enemy walking onto line loses once',()=>{const g=make();g.move(0,1);g.enemies=[{x:13,y:2,dx:1,dy:-1}];g.tick(.22);assert.equal(g.lives,2);});
+test('pause freezes player, timer and enemies',()=>{const g=make();g.pause();const old=JSON.stringify(g);g.move(0,1);g.tick(.2);assert.equal(JSON.stringify(g),old);});
+test('cannot retrace own unfinished line',()=>{const g=make();g.move(0,1);g.move(0,1);g.move(0,-1);assert.equal(g.player.y,2);assert.equal(g.trail.length,2);});
+test('70 percent ends game and stops movement',()=>{const g=make();g.enemies=[{x:25,y:10,dx:1,dy:1}];cut(g,20);assert.equal(g.state,'won');const old={...g.player};g.move(1,0);assert.deepEqual(g.player,old);});
+test('three hits end game; reset restores all state',()=>{const g=make();for(let i=0;i<3;i++){g.move(0,1);g.hit();}assert.equal(g.state,'lost');g.reset();assert.equal(g.lives,3);assert.equal(g.state,'ready');assert.equal(g.percent(),0);});
+test('enemies stay in unclaimed cells through 10000 steps',()=>{const g=make();for(let i=0;i<10000;i++){g.tick(.22);for(const e of g.enemies)assert.equal(g.grid[e.y][e.x],0);}});
