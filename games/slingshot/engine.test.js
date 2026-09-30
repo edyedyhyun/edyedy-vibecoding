@@ -1,0 +1,14 @@
+const test=require('node:test');const assert=require('node:assert/strict');const {Game,predict,DT}=require('./engine');
+function finish(g){for(let i=0;i<1100&&g.phase==='flying';i++)g.step();}
+test('all three layouts settle without accidental target losses',()=>{for(let l=0;l<3;l++){const g=new Game(l);assert.equal(g.hits,0);assert.equal(g.shots,3);assert.ok(g.targets.every(t=>t.position.y<480&&t.alive));}});
+test('a launch spends exactly one ball and blocks duplicate launch',()=>{const g=new Game();assert.equal(g.launch(25,75),true);assert.equal(g.launch(25,75),false);assert.equal(g.shots,2);});
+test('pause freezes physics and prevents launching',()=>{const g=new Game();g.paused=true;assert.equal(g.launch(25,60),false);g.paused=false;g.launch(25,60);g.paused=true;const p={...g.active.position};for(let i=0;i<120;i++)g.step();assert.deepEqual(g.active.position,p);assert.equal(g.time,0);});
+test('free-flight prediction agrees with actual projectile before impact',()=>{const g=new Game();const pts=predict(25,75);g.launch(25,75);for(let i=0;i<=40;i++){g.step();if(i%8===0){const p=pts[i/8];assert.ok(Math.hypot(p.x-g.active.position.x,p.y-g.active.position.y)<.00001);}}});
+test('prediction stops at the first box or target instead of showing a path through it',()=>{const g=new Game();const p=predict(25,60,[...g.boxes,...g.targets]);const free=predict(25,60);assert.ok(p.length<free.length);assert.ok(p.at(-1).x<690);});
+test('25 degrees 75 percent misses first target; 60 percent hits it',()=>{const g=new Game();g.launch(25,75);finish(g);assert.equal(g.hits,0);assert.equal(g.phase,'ready');g.launch(25,60);finish(g);assert.equal(g.phase,'won');assert.equal(g.hits,1);assert.equal(g.shots,1);});
+test('an impact on lower boxes can clear a target indirectly',()=>{const g=new Game();g.launch(10,60);finish(g);assert.equal(g.phase,'won');assert.ok(g.boxes.some(b=>Math.abs(b.angle)>.1||Math.abs(b.position.x-665)>10));});
+test('three misses end the round and further launch is refused',()=>{const g=new Game();for(let n=0;n<3;n++){g.launch(75,20);finish(g);}assert.equal(g.phase,'lost');assert.equal(g.shots,0);assert.equal(g.launch(25,60),false);});
+test('reset restores targets, ammunition, and pause state',()=>{const g=new Game();g.launch(25,60);finish(g);g.paused=true;g.load(0);assert.equal(g.hits,0);assert.equal(g.shots,3);assert.equal(g.phase,'ready');assert.equal(g.paused,false);assert.equal(g.balls.length,0);});
+test('second stage can be cleared within three balls',()=>{const g=new Game(1);g.launch(15,65);finish(g);assert.equal(g.phase,'won');assert.equal(g.hits,2);});
+test('third stage can be cleared within three balls',()=>{const g=new Game(2);g.launch(25,60);finish(g);assert.equal(g.phase,'won');assert.equal(g.hits,2);});
+test('removed targets cannot score twice during the result delay',()=>{const g=new Game();g.launch(25,60);finish(g);for(let i=0;i<300;i++)g.step();assert.equal(g.hits,1);assert.equal(g.phase,'won');});
