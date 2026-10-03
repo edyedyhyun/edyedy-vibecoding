@@ -1,0 +1,15 @@
+const {test}=require('node:test'),a=require('node:assert/strict'),{Game,chart}=require('../engine');
+const start=(w)=>{let g=new Game(w);g.start();return g};
+test('32 chronological notes alternate across both lanes',()=>{a.equal(chart.length,32);a.ok(chart.every((n,i)=>i===0||n.time>chart[i-1].time));a.deepEqual([...new Set(chart.map(n=>n.lane))].sort(),[0,1])});
+test('exact centre is perfect',()=>{let g=start();a.equal(g.hit(0,2).status,'perfect');a.equal(g.score,100)});
+test('80ms offset misses strict60ms but hits130ms',()=>{let old=start(.06),g=start();a.equal(old.hit(0,2.08),null);a.equal(old.misses,1);a.equal(g.hit(0,2.08).status,'good')});
+test('early and late good window included',()=>{for(const t of [1.87,2.13]){let g=start();a.equal(g.hit(0,t).status,'good')}});
+test('outside window cannot score',()=>{for(const t of [1.869,2.131])a.equal(start().hit(0,t),null)});
+test('perfect boundary and good classification',()=>{a.equal(start().hit(0,2.055).status,'perfect');a.equal(start().hit(0,2.056).status,'good')});
+test('wrong lane never consumes note',()=>{let g=start();a.equal(g.hit(1,2),null);a.equal(g.hit(0,2).status,'perfect')});
+test('same note scores once',()=>{let g=start();g.hit(0,2);a.equal(g.hit(0,2),null);a.equal(g.score,100);a.equal(g.hits,1)});
+test('miss resets combo and best survives',()=>{let g=start();g.hit(0,2);g.hit(1,2.6);g.advance(3.34);a.equal(g.combo,0);a.equal(g.best,2);a.equal(g.misses,1)});
+test('idle run counts32 misses and finishes',()=>{let g=start();g.advance(22);a.equal(g.misses,32);a.equal(g.phase,'finished')});
+test('complete chart can score3200 without misses',()=>{let g=start();for(const n of chart)g.hit(n.lane,n.time);g.advance(22);a.equal(g.hits,32);a.equal(g.score,3200);a.equal(g.best,32);a.equal(g.misses,0)});
+test('paused and finished input cannot score',()=>{let g=start();g.phase='paused';g.advance(10);g.hit(0,2);a.equal(g.time,0);a.equal(g.hits,0);g.phase='finished';a.equal(g.hit(0,2),null)});
+test('reset removes prior results',()=>{let g=start();g.hit(0,2);g.reset();a.equal(g.phase,'ready');a.equal(g.score,0);a.equal(g.errors.length,0)});
