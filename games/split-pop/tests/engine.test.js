@@ -1,0 +1,16 @@
+const {test}=require('node:test'),a=require('node:assert/strict'),E=require('../engine');
+test('ready does not advance',()=>{let s=E.create();E.step(s,.05,{right:true,fire:true});a.equal(s.time,0);a.equal(s.player.x,400)});
+test('large splits into two medium with opposite velocities',()=>{let s=E.create();E.start(s);E.split(s,0);a.equal(s.balls.length,2);a.ok(s.balls.every(b=>b.size===1));a.ok(s.balls[0].vx<0&&s.balls[1].vx>0);a.equal(s.score,100)});
+test('medium splits into two small',()=>{let s=E.create();s.balls=[E.ball(300,100,1)];E.split(s,0);a.ok(s.balls.every(b=>b.size===0));a.equal(s.balls.length,2)});
+test('last small clears stage',()=>{let s=E.create();s.balls=[E.ball(200,100,0)];E.start(s);E.split(s,0);a.equal(s.status,'clear');a.equal(s.score,300)});
+test('one large requires seven hits and awards 1700',()=>{let s=E.create();E.start(s);while(s.balls.length)E.split(s,0);a.equal(s.hits,7);a.equal(s.score,1700)});
+test('one shot hits only one overlapping ball',()=>{let s=E.create();E.start(s);s.balls=[E.ball(400,320,0,0),E.ball(400,320,0,0)];E.fire(s);E.step(s,.05);a.equal(s.balls.length,1);a.equal(s.shots.length,0)});
+test('cooldown prevents repeated instantaneous shots',()=>{let s=E.create();E.start(s);a.ok(E.fire(s));a.equal(E.fire(s),false)});
+test('player stays inside both edges',()=>{let s=E.create();E.start(s);s.balls=[];for(let i=0;i<100;i++)E.step(s,.05,{left:true});a.equal(s.player.x,18);for(let i=0;i<100;i++)E.step(s,.05,{right:true});a.equal(s.player.x,782)});
+test('wall and floor bounce inward',()=>{let s=E.create();E.start(s);s.balls=[E.ball(13,380,0,-145)];s.balls[0].vy=200;E.step(s,.05);a.ok(s.balls[0].vx>0);a.ok(s.balls[0].vy<0);a.equal(s.balls[0].y,E.FLOOR-13)});
+test('damage protection prevents draining all lives in one overlap',()=>{let s=E.create();E.start(s);s.invincible=0;s.balls=[E.ball(400,375,0,0)];E.step(s,.001);a.equal(s.lives,2);E.step(s,.001);a.equal(s.lives,2)});
+test('last collision ends game',()=>{let s=E.create(0,0,1);E.start(s);s.invincible=0;s.balls=[E.ball(400,375,0,0)];E.step(s,.001);a.equal(s.status,'over')});
+test('paused engine preserves state',()=>{let s=E.create();s.status='paused';let before=JSON.stringify(s);E.step(s,.05,{fire:true});a.equal(JSON.stringify(s),before)});
+test('expired harpoon is removed',()=>{let s=E.create();E.start(s);s.balls=[E.ball(70,100,0,0)];E.fire(s);for(let i=0;i<30;i++)E.step(s,.04);a.equal(s.shots.length,0)});
+test('next stage retains score and remaining lives',()=>{let s=E.create(1,1700,2);a.equal(s.score,1700);a.equal(s.lives,2);a.equal(s.balls.length,2);a.equal(s.status,'ready')});
+test('collision uses segment not infinite line',()=>{a.equal(E.shotHit({x:100,top:100,bottom:200},E.ball(100,50,0)),false);a.ok(E.shotHit({x:100,top:100,bottom:200},E.ball(108,150,0)))});
