@@ -1,0 +1,17 @@
+const{test}=require('node:test'),assert=require('node:assert/strict'),E=require('../engine.js');function play(){let s=E.create();E.start(s);return s}function run(s,sec,input={}){for(let i=0;i<sec*120;i++)E.step(s,1/120,input)}
+test('ready and paused states freeze timers',()=>{let s=E.create(),old=JSON.stringify(s);run(s,2);assert.equal(JSON.stringify(s),old);s.status='paused';old=JSON.stringify(s);run(s,2);assert.equal(JSON.stringify(s),old)});
+test('one shot adds one snow layer and is consumed',()=>{let s=play();E.fire(s);run(s,.5);assert.equal(s.enemies[0].snow,1);assert.equal(s.shots.length,0)});
+test('four hits freeze enemy without scoring',()=>{let s=play();for(let i=0;i<4;i++){E.fire(s);run(s,.5)}assert.equal(s.enemies[0].state,'frozen');assert.equal(s.score,0);assert.equal(s.defeated,0)});
+test('partial snow melts after three seconds',()=>{let s=play();E.fire(s);run(s,4);assert.equal(s.enemies[0].snow,0)});
+test('frozen enemy thaws after eight seconds',()=>{let s=play();s.enemies[0].state='frozen';s.enemies[0].snow=4;s.enemies[0].thaw=8;run(s,8.1);assert.equal(s.enemies[0].state,'free')});
+test('push rejects distant snowball',()=>{let s=play();Object.assign(s.enemies[0],{state:'frozen',thaw:8});assert.equal(E.push(s),false);assert.equal(s.event,'too-far')});
+test('push follows facing and needs vertical proximity',()=>{let s=play();Object.assign(s.enemies[0],{state:'frozen',thaw:8,x:150});s.player.y=310;assert.equal(E.push(s),false);s.player.y=420;s.player.face=-1;assert.ok(E.push(s));assert.ok(s.enemies[0].vx<0)});
+test('rolling sweeps two enemies with increasing score and clears at 700',()=>{let s=play();s.invincible=999;s.player.x=200;Object.assign(s.enemies[0],{x:260,state:'frozen',thaw:8});assert.ok(E.push(s));run(s,2);assert.equal(s.defeated,3);assert.equal(s.bestChain,2);assert.equal(s.score,700);assert.equal(s.status,'clear')});
+test('rolling snowball never harms player',()=>{let s=play();s.invincible=0;Object.assign(s.enemies[0],{x:110,state:'rolling',vx:440});run(s,.2);assert.equal(s.lives,3)});
+test('cooldown prevents unlimited instant firing',()=>{let s=play();assert.ok(E.fire(s));assert.equal(E.fire(s),false);assert.equal(s.shots.length,1)});
+test('damage respawns and preserves defeated enemies',()=>{let s=play();s.invincible=0;s.score=200;s.defeated=1;s.enemies[1].state='gone';s.player.x=260;E.step(s,1/120);assert.equal(s.lives,2);assert.equal(s.player.x,100);assert.equal(s.score,200);assert.equal(s.enemies[1].state,'gone')});
+test('last life ends game',()=>{let s=play();s.lives=1;s.invincible=0;s.player.x=260;E.step(s,1/120);assert.equal(s.status,'over')});
+test('air jump is rejected and lands on floor',()=>{let s=play();assert.ok(E.jump(s));assert.equal(E.jump(s),false);run(s,1.1);assert.equal(s.player.y,420);assert.ok(s.player.grounded)});
+test('jump reaches raised shelf from below',()=>{let s=E.create(1);E.start(s);s.invincible=999;s.player.x=300;E.jump(s);run(s,.8);assert.equal(s.player.y,310);assert.ok(s.player.grounded)});
+test('rolling ball falls from platform edge onto floor',()=>{let s=E.create(1);E.start(s);s.invincible=999;let e=s.enemies[2];Object.assign(e,{x:555,state:'rolling',vx:440});run(s,.55);assert.equal(e.y,420)});
+test('next level resets encounter and preserves score and lives',()=>{let s=E.create(1,700,2);assert.equal(s.score,700);assert.equal(s.lives,2);assert.equal(s.defeated,0);assert.equal(s.status,'ready')});
