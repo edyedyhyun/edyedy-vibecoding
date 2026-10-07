@@ -1,0 +1,15 @@
+const test=require('node:test'),assert=require('node:assert/strict'),E=require('../engine');
+function advance(s,n){for(let t=0;t<n&&s.mode==='playing';t+=.01)E.step(s,.01);}
+test('ready and paused freeze simulation',()=>{let s=E.create();E.step(s,.05);assert.equal(s.time,0);E.start(s);advance(s,1);s.mode='paused';let before=JSON.stringify(s);E.step(s,.05);assert.equal(JSON.stringify(s),before);});
+test('lane edges clamp; nonplaying ignores input',()=>{let s=E.create();assert.equal(E.move(s,1),false);E.start(s);E.move(s,-1);E.move(s,-1);assert.equal(s.lane,0);E.move(s,1);E.move(s,1);E.move(s,1);assert.equal(s.lane,2);});
+test('one lane move completes in .22 seconds without teleport',()=>{let s=E.create();E.start(s);E.move(s,1);E.step(s,.05);assert(s.x>240&&s.x<340);advance(s,.18);assert.equal(s.x,340);});
+test('partial lateral overlap collides',()=>{let s=E.create();E.start(s);s.x=300;s.lane=2;s.vehicles=[{x:340,y:545,passed:false}];E.step(s,.001);assert.equal(s.mode,'over');});
+test('open lane avoids car while traffic advances',()=>{let s=E.create();E.start(s);s.lane=0;s.x=140;s.vehicles=[{x:240,y:545,passed:false}];E.step(s,.05);assert.equal(s.mode,'playing');assert(s.vehicles[0].y>545);});
+test('one passed vehicle counted once then removed',()=>{let s=E.create();E.start(s);s.vehicles=[{x:140,y:620,passed:false}];advance(s,.8);assert.equal(s.passed,1);assert.equal(s.vehicles.length,0);});
+test('speed grows to cap at 340',()=>{let s=E.create();E.start(s);s.time=44.99;E.step(s,.02);assert.equal(s.speed,340);});
+test('60 second completion stops next steps',()=>{let s=E.create();E.start(s);s.time=59.99;E.step(s,.02);assert.equal(s.mode,'clear');assert.equal(s.time,60);let b=JSON.stringify(s);E.step(s,.05);assert.equal(JSON.stringify(s),b);});
+test('spawn leaves free lane; successive safe lanes adjacent',()=>{for(let seed=1;seed<=100;seed++){let s=E.create(seed);s.time=20;for(let i=0;i<100;i++){let safe=s.safe;s.vehicles=[];E.spawn(s);assert(Math.abs(s.safe-safe)<=1);assert.equal(s.vehicles.length,2);assert(s.vehicles.every(v=>v.lane!==s.safe));}}});
+test('early rows contain one car',()=>{let s=E.create();E.spawn(s);assert.equal(s.vehicles.length,1);});
+test('same seed yields same traffic',()=>{let a=E.create(731),b=E.create(731);for(let i=0;i<8;i++){E.spawn(a);E.spawn(b);}assert.deepEqual(a,b);});
+test('maximum speed row separation exceeds crossing window plus lane-change time',()=>{const separation=.9,collisionWindow=130/340;assert(separation-collisionWindow>E.CHANGE);});
+test('100 seeded roads can be completed by rule-based driver',()=>{for(let seed=1;seed<=100;seed++){let s=E.create(seed);E.start(s);for(let i=0;i<6200&&s.mode==='playing';i++){const near=s.vehicles.filter(v=>v.y>340&&v.y<615).sort((a,b)=>b.y-a.y)[0];if(near){const blocked=s.vehicles.filter(v=>v.row===near.row).map(v=>v.lane);if(blocked.includes(s.lane)){const open=[0,1,2].filter(l=>!blocked.includes(l));const target=open.reduce((a,b)=>Math.abs(b-s.lane)<Math.abs(a-s.lane)?b:a);E.move(s,target-s.lane);}}E.step(s,.01);}assert.equal(s.mode,'clear',`seed ${seed} failed ${s.time}`);}});
