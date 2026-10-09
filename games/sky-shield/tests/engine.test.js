@@ -1,0 +1,14 @@
+const test=require('node:test'),assert=require('node:assert/strict'),E=require('../engine');function run(s,t){for(let i=0;i<t/.01&&s.mode==='playing';i++)E.step(s,.01);}function scene(){let s=E.create();E.start(s);s.spawned=5;s.next=100;s.enemies=[{x:80,y:100,fromX:80,vx:0,vy:55,target:0}];return s;}
+test('ready and pause freeze time',()=>{let s=E.create();E.step(s,.05);assert.equal(s.time,0);E.start(s);s.mode='paused';let b=JSON.stringify(s);E.step(s,.05);assert.equal(JSON.stringify(s),b);});
+test('shot costs ammo once and obeys cooldown',()=>{let s=scene();assert(E.fire(s,80,250));assert.equal(s.ammo,17);assert(!E.fire(s,80,250));run(s,.2);assert(E.fire(s,80,250));assert.equal(s.ammo,16);});
+test('empty ammo and paused reject fire',()=>{let s=scene();s.ammo=0;assert(!E.fire(s,80,250));s.ammo=2;s.mode='paused';assert(!E.fire(s,80,250));});
+test('shot clamped to upper playfield',()=>{let s=scene();E.fire(s,-100,999);assert.equal(s.shots[0].tx,16);assert.equal(s.shots[0].ty,350);});
+test('arrival creates burst only at destination',()=>{let s=scene();s.enemies=[];E.fire(s,320,200);run(s,.5);assert.equal(s.bursts.length,0);run(s,.51);assert(s.bursts.length>0);assert.equal(s.shots.length,0);});
+test('burst expands then fades',()=>{assert.equal(E.radius({age:0,max:58}),0);assert.equal(E.radius({age:.55,max:58}),58);assert(E.radius({age:1.2,max:58})<58);});
+test('aiming current missile position misses; future point catches',()=>{let a=scene(),b=scene();E.fire(a,80,100);E.fire(b,80,250);run(a,5);run(b,5);assert.equal(a.hit,0);assert.equal(b.hit,1);assert.equal(b.score,100);});
+test('multiple enemies caught by one burst',()=>{let s=scene();s.enemies=[80,105].map(x=>({x,y:250,fromX:x,vx:0,vy:0,target:0}));s.bursts=[{x:90,y:250,age:.4,max:58}];E.step(s,.01);assert.equal(s.hit,2);assert.equal(s.score,200);});
+test('secondary burst chain catches neighboring enemy on next step',()=>{let s=scene();s.enemies=[{x:100,y:200,fromX:100,vx:0,vy:0,target:0},{x:128,y:200,fromX:128,vx:0,vy:0,target:0}];s.bursts=[{x:95,y:200,age:.06,max:58}];E.step(s,.01);assert.equal(s.hit,1);run(s,.5);assert.equal(s.hit,2);});
+test('ground impacts destroy target and consume each missile',()=>{let s=scene();s.enemies[0].y=419;E.step(s,.03);assert.equal(s.bases[0],false);assert.equal(s.missed,1);assert.equal(s.enemies.length,0);});
+test('all bases lost ends game',()=>{let s=scene();s.bases=[false,false,true];s.enemies[0].target=2;s.enemies[0].y=419;E.step(s,.03);assert.equal(s.mode,'over');});
+test('clear then next preserves bases and points; refills ammo',()=>{let s=scene();s.spawned=6;s.enemies=[];s.bases[0]=false;s.score=300;s.ammo=2;E.step(s,.01);assert.equal(s.mode,'clear');assert(E.next(s));assert.equal(s.wave,2);assert.equal(s.score,300);assert.equal(s.ammo,18);assert.equal(s.bases[0],false);assert.equal(s.spawned,0);});
+test('last wave cannot advance',()=>{let s=scene();s.wave=3;s.mode='clear';assert(!E.next(s));});
