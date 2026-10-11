@@ -12,12 +12,12 @@
   <main class="game">
     <header class="masthead">
       <a class="brand" href="#" aria-label="한푼부터 부자까지 처음 화면"><span class="brand-mark" aria-hidden="true">₩</span> 한푼부터 부자까지</a>
-      <span class="chapter">첫 100원</span>
+      <span class="chapter"><span class="live-dot"></span> CHAPTER 01</span>
     </header>
     <div class="layout">
       <section class="scene-panel" aria-label="작은 방">
-        <div class="scene-heading"><span class="eyebrow">나의 첫 번째 공간</span><h1>작은 방에서,<br>한푼씩 시작.</h1><p>작은 일을 하나씩 마치며 첫 100원을 모아보세요.</p></div>
-        <div class="room" id="room">
+        <div class="scene-heading"><span class="eyebrow">LEVEL 01 · 작은 작업실</span><h1>오늘의 한푼이<br>내일의 시작.</h1><p>작은 일을 하나씩 마치며 첫 100원을 모아보세요.</p></div>
+        <div class="room" id="room"><div class="room-badge">나의 공간 <span>작업실</span></div>
           <svg class="room-art" viewBox="0 0 660 420" role="img" aria-label="작은 책상에서 일을 시작하는 초록 옷의 캐릭터와 동전 저금통">
             <defs>
               <pattern id="wallpaper" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="1" fill="#d8dccd"/></pattern>
@@ -55,9 +55,9 @@
         <div class="scene-foot"><span class="dot" aria-hidden="true"></span><span id="sceneMessage">아직 작지만, 여기서 시작합니다.</span></div>
       </section>
       <section class="wallet-panel" aria-labelledby="walletHeading">
-        <span class="eyebrow" id="walletHeading">지금 가진 돈</span>
+        <span class="eyebrow" id="walletHeading">TOTAL BALANCE · 보유 자금</span>
         <div class="balance"><span id="money">0</span><span class="unit">원</span></div>
-        <p class="balance-note">작은 일 하나에 1원씩</p>
+        <p class="balance-note">한 번의 작은 일, 한 걸음의 성장</p>
         <button class="earn-button" id="earnButton"><span class="button-icon" aria-hidden="true">✦</span><span>작은 일 하기</span><strong>+1원</strong></button>
         <p class="keyboard-note">버튼을 클릭하거나, Tab으로 선택한 뒤 Enter 또는 Space</p>
         <section class="goal-card" aria-labelledby="goalHeading">
@@ -67,12 +67,12 @@
           <p id="goalMessage">처음 모으는 돈은 직접 벌어봅니다.</p>
         </section>
         <div class="session-row"><span>이번에 마친 작은 일</span><strong><span id="workCount">0</span>회</strong></div>
-        <div class="prototype-note"><span>첫 제작 버전</span><p>지금은 직접 클릭해서 버는 단계입니다. 새로고침하면 처음부터 시작합니다.</p></div>
+        <div class="prototype-note"><span>프로토타입 · 저장 기능 준비 중</span><p>지금은 직접 클릭해서 버는 단계입니다. 새로고침하면 처음부터 시작합니다.</p></div>
         <button class="reset-button" id="resetButton">다시 시작</button>
         <p class="reset-notice" id="resetNotice" role="status" aria-live="polite"></p>
       </section>
     </div>
-    <footer class="page-foot"><span>한푼부터 부자까지</span><span>제작기 01 · v0.1.0</span></footer>
+    <footer class="page-foot"><span>한푼부터 부자까지</span><span>제작기 01 · v0.1.1</span></footer>
   </main>
 </body>
 </html>

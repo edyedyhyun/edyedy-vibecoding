@@ -446,3 +446,46 @@ progress::-moz-progress-bar {
     opacity:0
   }
 }
+
+/* Episode 1: contemporary dashboard composition. */
+:root { --ink:#edf2f7; --muted:#9aa8ba; --green:#a9e870; --cream:#0d121b; --line:#293241; --paper:#192230; --orange:#a9e870; background:var(--cream); color:var(--ink); }
+body { background:radial-gradient(ellipse at 20% 0%,#22302c 0%,transparent 48%),#0d121b; min-height:100vh; }
+.game { max-width:1260px; padding:32px 36px 24px; }
+.masthead { border:0; padding-bottom:26px; }
+.brand { font-size:19px; letter-spacing:-.6px; }
+.brand-mark { border-radius:11px; background:#a9e870; color:#192317; width:38px; height:38px; }
+.chapter { display:flex; align-items:center; gap:8px; color:#b7c6b8; background:#1c2a24; border:1px solid #344b39; font-size:10px; letter-spacing:1.3px; }
+.live-dot { width:6px; height:6px; background:#a9e870; border-radius:50%; }
+.layout { grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:24px; padding-top:0; align-items:start; }
+.scene-panel { padding:28px; background:#18212d; border:1px solid #293545; border-radius:24px; overflow:hidden; }
+.scene-heading { padding:0; }
+.eyebrow { font-size:10px; letter-spacing:1.6px; color:#a8b9ab; }
+h1 { font-size:40px; letter-spacing:-1.8px; line-height:1.25; margin:16px 0 12px; }
+.scene-heading p { color:#9caabc; font-size:13px; }
+.room { margin-top:28px; border-radius:18px; overflow:hidden; background:linear-gradient(140deg,#e5eadc,#c9d4bc); padding:32px 12px 8px; }
+.room-badge { position:absolute; top:15px; left:18px; display:flex; gap:12px; font-size:10px; color:#63705d; align-items:center; }
+.room-badge span { background:#ffffffad; color:#364c32; padding:4px 8px; border-radius:6px; font-weight:700; }
+.scene-foot { margin:20px 0 0; font-size:11px; color:#a7b5c4; line-height:1.6; }
+.dot { background:#a9e870; }
+.wallet-panel { padding:28px; border:1px solid #293545; border-radius:24px; background:#141d29; }
+.balance { font-size:72px; margin-top:16px; min-height:88px; color:#f4f7fb; letter-spacing:-3px; }
+.unit { color:#8697ac; font-size:22px; }
+.balance-note { font-size:12px; margin:4px 0 24px; }
+.earn-button { min-height:64px; border-radius:14px; background:#a9e870; color:#182415; box-shadow:0 4px 0 #60853e; font-size:16px; padding:0 16px; }
+.earn-button:hover { background:#b9f583; }
+.earn-button:active { box-shadow:0 1px 0 #60853e; }
+.button-icon { color:#355523; margin-left:0; }
+.earn-button strong { background:#8acc55; color:#23351c; }
+.keyboard-note { color:#7f90a6; margin:14px 0 24px; font-size:10px; }
+.goal-card { border-radius:16px; background:#1b2635; border-color:#2c394b; padding:20px; }
+.goal-header>span { background:#2d3b4c; padding:5px 8px; border-radius:6px; color:#b0bfd0; font-size:10px; }
+progress,progress::-webkit-progress-bar { background:#344154; }
+.goal-card.complete { background:#202f24; border-color:#527844; }
+.goal-card.complete progress::-webkit-progress-value { background:#a9e870; }
+.session-row { color:#e8edf3; padding:20px 0; font-size:12px; }
+.prototype-note>span { background:#252f3e; color:#a2b1c4; font-size:10px; }
+.prototype-note p { color:#8698ad; }
+.reset-button { color:#9cadc1; }
+.page-foot { border:0; color:#6d7f96; margin-top:22px; }
+button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
+@media(max-width:760px) { .game { padding:20px 16px; } .masthead { padding-bottom:20px; } .brand { font-size:15px; } .chapter { font-size:8px; padding:6px 8px; } .layout { gap:16px; } .scene-panel,.wallet-panel { padding:22px; border-radius:20px; } h1 { font-size:30px; } .room { margin-top:20px; padding-top:30px; } .balance { font-size:60px; min-height:72px; } .scene-foot { margin-top:14px; } .wallet-panel { width:100%; } }

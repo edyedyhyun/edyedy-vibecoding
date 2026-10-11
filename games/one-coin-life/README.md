@@ -1,6 +1,6 @@
 # 한푼부터 부자까지
 
-하나의 게임을 클릭 프로토타입에서 공개 가능한 방치형 웹 게임으로 발전시키는 연재 프로젝트입니다. 현재는 제작기 01, **v0.1.0**입니다.
+하나의 게임을 클릭 프로토타입에서 공개 가능한 방치형 웹 게임으로 발전시키는 연재 프로젝트입니다. 현재는 제작기 01, **v0.1.1**입니다.
 
 ## 현재 버전 실행
 
@@ -9,12 +9,12 @@
 분리된 소스를 확인하려면:
 
 ```sh
-git clone --depth 1 --branch one-coin-life-ep01 https://github.com/edyedyhyun/edyedy-vibecoding.git one-coin-life-ep01
-cd one-coin-life-ep01/games/one-coin-life
+git clone --depth 1 --branch one-coin-life-ep01-design https://github.com/edyedyhyun/edyedy-vibecoding.git one-coin-life-ep01-design
+cd one-coin-life-ep01-design/games/one-coin-life
 python3 -m http.server 8000
 ```
 
-Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`를 `python`으로 바꾸세요. 브라우저에서 `http://localhost:8000`을 엽니다. 이후 편의 코드가 달라져도 `one-coin-life-ep01` 태그에서 이 편의 상태를 그대로 받을 수 있습니다.
+Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`를 `python`으로 바꾸세요. 브라우저에서 `http://localhost:8000`을 엽니다. 이후 편의 코드가 달라져도 `one-coin-life-ep01-design` 태그에서 이 편의 상태를 그대로 받을 수 있습니다.
 
 ## 제작기 01의 기능
 
