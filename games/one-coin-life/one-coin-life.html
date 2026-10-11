@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#214d3a">
+  <title>한푼부터 부자까지 · 첫 100원</title>
+  <style>
+:root {
+  --ink:#243f32;
+  --muted:#6b756b;
+  --green:#214d3a;
+  --cream:#f5f1e8;
+  --line:#deded0;
+  --orange:#dba15c;
+  --paper:#fffdf7;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  color:var(--ink);
+  background:var(--cream);
+  font-synthesis:none
+}
+* {
+  box-sizing:border-box
+}
+body {
+  margin:0
+}
+button,a {
+  -webkit-tap-highlight-color:transparent
+}
+button {
+  font:inherit;
+  cursor:pointer
+}
+button:focus-visible,a:focus-visible {
+  outline:3px solid #ca8741;
+  outline-offset:5px
+}
+.game {
+  max-width:1180px;
+  margin:auto;
+  padding:28px 32px 15px
+}
+.masthead {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding-bottom:24px;
+  border-bottom:1px solid var(--line);
+  gap:16px
+}
+.brand {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:var(--ink);
+  font-weight:750;
+  text-decoration:none;
+  font-size:20px;
+  letter-spacing:-.5px
+}
+.brand-mark {
+  display:grid;
+  place-items:center;
+  width:33px;
+  height:33px;
+  border-radius:50%;
+  background:var(--green);
+  color:#f8e6ac;
+  font-weight:800
+}
+.chapter {
+  font-size:12px;
+  padding:7px 11px;
+  background:#e6e9dc;
+  border-radius:20px;
+  white-space:nowrap;
+  letter-spacing:.4px
+}
+.layout {
+  display:grid;
+  grid-template-columns:1.4fr 1fr;
+  gap:48px;
+  padding-top:34px
+}
+.eyebrow {
+  display:block;
+  font-size:12px;
+  letter-spacing:1px;
+  font-weight:650;
+  color:var(--muted)
+}
+h1 {
+  font-size:40px;
+  line-height:1.25;
+  letter-spacing:-1.8px;
+  margin:13px 0 16px;
+  font-weight:780
+}
+.scene-heading p {
+  font-size:14px;
+  color:var(--muted);
+  line-height:1.7;
+  margin:0
+}
+.room {
+  position:relative;
+  margin-top:4px
+}
+.room-art {
+  width:100%;
+  height:auto;
+  display:block
+}
+.coin-pop {
+  position:absolute;
+  left:69%;
+  top:38%;
+  opacity:0;
+  color:#aa7134;
+  font-weight:800;
+  font-size:23px;
+  pointer-events:none
+}
+.room.working .person {
+  animation:nod .25s ease
+}
+.coin-pop.pop {
+  animation:coin-rise .6s ease forwards
+}
+.scene-foot {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  color:var(--muted);
+  margin:4px 0 0 20px
+}
+.dot {
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#739175;
+  flex:none
+}
+.wallet-panel {
+  padding:5px 0 0
+}
+.balance {
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+  min-height:82px;
+  margin-top:8px;
+  font-size:64px;
+  line-height:1.2;
+  font-weight:800;
+  letter-spacing:-2px;
+  font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere
+}
+.unit {
+  font-size:22px;
+  letter-spacing:0;
+  font-weight:650
+}
+.balance-note {
+  color:var(--muted);
+  font-size:13px;
+  margin:6px 0 20px
+}
+.earn-button {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  width:100%;
+  min-height:65px;
+  border:0;
+  border-radius:12px;
+  background:var(--green);
+  color:#fffdf7;
+  box-shadow:0 4px 0 #133727;
+  transition:background .12s,transform .12s;
+  touch-action:manipulation;
+  font-size:17px;
+  font-weight:700
+}
+.earn-button:hover {
+  background:#2e6149
+}
+.earn-button:active {
+  transform:translateY(3px);
+  box-shadow:0 1px 0 #133727
+}
+.earn-button strong {
+  font-size:13px;
+  margin-left:auto;
+  background:#3c6b52;
+  padding:7px 10px;
+  border-radius:8px
+}
+.button-icon {
+  margin-left:14px;
+  color:#e6c47f;
+  font-size:25px
+}
+.keyboard-note {
+  font-size:10px;
+  color:#798278;
+  line-height:1.5;
+  text-align:center;
+  margin:12px 0 24px
+}
+.goal-card {
+  background:var(--paper);
+  padding:20px;
+  border:1px solid var(--line);
+  border-radius:13px
+}
+.goal-header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px
+}
+h2 {
+  font-size:15px;
+  margin:0;
+  font-weight:750
+}
+.goal-header>span {
+  font-size:11px;
+  white-space:nowrap;
+  color:var(--muted)
+}
+progress {
+  display:block;
+  appearance:none;
+  width:100%;
+  height:8px;
+  border:0;
+  background:#e8e7dc;
+  border-radius:10px;
+  overflow:hidden;
+  margin:18px 0 10px
+}
+progress::-webkit-progress-bar {
+  background:#e8e7dc;
+  border-radius:10px
+}
+progress::-webkit-progress-value {
+  background:var(--orange);
+  border-radius:10px
+}
+progress::-moz-progress-bar {
+  background:var(--orange);
+  border-radius:10px
+}
+.goal-numbers {
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  font-size:11px;
+  color:var(--muted);
+  font-variant-numeric:tabular-nums
+}
+.goal-card p {
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.7;
+  margin:13px 0 0
+}
+.goal-card.complete {
+  border-color:#85a288;
+  background:#f5f8ed
+}
+.goal-card.complete progress::-webkit-progress-value {
+  background:#739175
+}
+.session-row {
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  padding:19px 0;
+  border-bottom:1px solid var(--line);
+  gap:10px
+}
+.session-row>span {
+  color:var(--muted)
+}
+.prototype-note {
+  margin-top:17px
+}
+.prototype-note>span {
+  font-size:10px;
+  background:#e6e9dc;
+  padding:4px 7px;
+  border-radius:4px;
+  color:#637562
+}
+.prototype-note p {
+  font-size:11px;
+  color:var(--muted);
+  line-height:1.7;
+  margin:9px 0 12px
+}
+.reset-button {
+  background:none;
+  border:0;
+  padding:4px 0;
+  color:#667768;
+  text-decoration:underline;
+  text-underline-offset:4px;
+  font-size:11px
+}
+.reset-notice {
+  min-height:17px;
+  color:var(--muted);
+  font-size:11px;
+  margin:8px 0 0
+}
+.page-foot {
+  display:flex;
+  justify-content:space-between;
+  border-top:1px solid var(--line);
+  margin-top:26px;
+  padding-top:15px;
+  font-size:10px;
+  color:#7a8072
+}
+.scene-heading {
+  padding-left:20px
+}
+@keyframes coin-rise {
+  0% {
+    opacity:0;
+    transform:translateY(8px)
+  }
+  20% {
+    opacity:1
+  }
+  100% {
+    opacity:0;
+    transform:translateY(-42px)
+  }
+}
+@keyframes nod {
+  50% {
+    transform:translateY(3px)
+  }
+}
+@media(min-width:1000px) and (max-height:780px) {
+  .game {
+    max-width:1100px;
+    padding-top:22px
+  }
+  .masthead {
+    padding-bottom:17px
+  }
+  .layout {
+    padding-top:24px;
+    gap:40px
+  }
+  h1 {
+    font-size:35px;
+    margin:10px 0 12px
+  }
+  .balance {
+    font-size:58px;
+    min-height:72px
+  }
+  .goal-card {
+    padding:16px
+  }
+  .keyboard-note {
+    margin-bottom:18px
+  }
+  .page-foot {
+    margin-top:15px
+  }
+}
+@media(max-width:760px) {
+  .game {
+    padding:20px 18px 16px
+  }
+  .brand {
+    font-size:16px
+  }
+  .brand-mark {
+    width:28px;
+    height:28px
+  }
+  .masthead {
+    padding-bottom:18px
+  }
+  .chapter {
+    font-size:10px;
+    padding:6px 9px
+  }
+  .layout {
+    display:flex;
+    flex-direction:column;
+    gap:25px;
+    padding-top:22px
+  }
+  .scene-heading {
+    padding:0 6px
+  }
+  h1 {
+    font-size:31px;
+    margin:10px 0 12px
+  }
+  .scene-heading p {
+    font-size:12px
+  }
+  .room {
+    max-width:520px;
+    margin:0 auto
+  }
+  .scene-foot {
+    margin:0 6px;
+    font-size:10px
+  }
+  .wallet-panel {
+    padding:0 6px
+  }
+  .balance {
+    font-size:52px;
+    min-height:62px
+  }
+  .balance-note {
+    margin-bottom:17px
+  }
+  .earn-button {
+    min-height:62px
+  }
+  .goal-card {
+    padding:18px
+  }
+  .keyboard-note {
+    font-size:9px
+  }
+  .page-foot {
+    margin-top:18px
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  *,*::before,*::after {
+    animation:none!important;
+    transition:none!important
+  }
+  .coin-pop.pop {
+    opacity:0
+  }
+}
+
+</style>
+  
+</head>
+<body>
+  <main class="game">
+    <header class="masthead">
+      <a class="brand" href="#" aria-label="한푼부터 부자까지 처음 화면"><span class="brand-mark" aria-hidden="true">₩</span> 한푼부터 부자까지</a>
+      <span class="chapter">첫 100원</span>
+    </header>
+    <div class="layout">
+      <section class="scene-panel" aria-label="작은 방">
+        <div class="scene-heading"><span class="eyebrow">나의 첫 번째 공간</span><h1>작은 방에서,<br>한푼씩 시작.</h1><p>작은 일을 하나씩 마치며 첫 100원을 모아보세요.</p></div>
+        <div class="room" id="room">
+          <svg class="room-art" viewBox="0 0 660 420" role="img" aria-label="작은 책상에서 일을 시작하는 초록 옷의 캐릭터와 동전 저금통">
+            <defs>
+              <pattern id="wallpaper" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="1" fill="#d8dccd"/></pattern>
+              <linearGradient id="daylight" x2="0" y2="1"><stop stop-color="#b9d9d0"/><stop offset="1" stop-color="#e9eee0"/></linearGradient>
+            </defs>
+            <path d="M45 28h570v280H45z" fill="#f0eadb"/><path d="M45 28h570v280H45z" fill="url(#wallpaper)"/>
+            <path d="M45 306h570l35 94H10z" fill="#d6b99a"/><path d="M45 307h570" stroke="#a69175" stroke-width="5"/>
+            <path d="M10 400h640M23 365h614M34 338h591M174 309l-30 91M340 309v91M493 309l37 91" stroke="#bea487" stroke-width="2"/>
+            <rect x="83" y="69" width="160" height="136" rx="7" fill="#9f8061"/><rect x="93" y="79" width="140" height="116" fill="url(#daylight)"/>
+            <path d="M163 80v115M94 140h140" stroke="#fff9ed" stroke-width="8"/><circle cx="126" cy="104" r="13" fill="#fff3b9"/>
+            <path d="M207 194l-25-37-27 37M95 194l28-24 29 24" fill="#afc7b0"/><path d="M90 204h151" stroke="#9f8061" stroke-width="10" stroke-linecap="round"/>
+            <rect x="284" y="69" width="124" height="88" rx="6" fill="#c1a487"/><rect x="292" y="77" width="108" height="72" rx="3" fill="#eee6d3"/>
+            <path d="M309 109h41M309 120h72M309 132h58" stroke="#baaf92" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="377" cy="94" r="6" fill="#dba559"/><path d="M282 176h138" stroke="#9f8061" stroke-width="6"/>
+            <path d="M534 256v-37M535 247c-37-5-32-30-32-30 31 1 32 30 32 30M535 238c35-2 29-30 29-30-28 3-29 30-29 30" stroke="#59886a" stroke-width="4" fill="#7c9b70"/>
+            <path d="M514 255h42l-6 43h-30z" fill="#bf7f55"/><ellipse cx="535" cy="255" rx="21" ry="5" fill="#965b3e"/>
+            <ellipse cx="364" cy="347" rx="118" ry="22" fill="#bea487" opacity=".5"/>
+            <g class="person"><path d="M342 271l-5 64h28l15-57M385 271l9 64h28l-6-77" fill="#394f54"/>
+              <path d="M329 331h39v14h-47q-2-8 8-14M392 331h33q9 6 7 14h-41" fill="#333a38"/>
+              <path d="M330 210q38-29 74-3l12 72h-90z" fill="#32664b"/>
+              <path d="M356 205v-20h30v25" fill="#e5b795"/><ellipse cx="371" cy="165" rx="38" ry="42" fill="#edc3a1"/>
+              <path d="M333 165q-16-68 44-62 53 3 32 74l-9-38q-27 6-38-12-7 28-29 38" fill="#473e35"/>
+              <circle cx="359" cy="164" r="3" fill="#473e35"/><circle cx="383" cy="164" r="3" fill="#473e35"/>
+              <path d="M363 182q8 6 17-1" fill="none" stroke="#a76e55" stroke-width="3" stroke-linecap="round"/>
+              <path d="M337 224l-43 19 10 17 44-16M399 225l32 13-8 20-35-18" stroke="#32664b" stroke-width="20" stroke-linecap="round"/>
+              <path d="M300 251h32M423 249h-30" stroke="#edc3a1" stroke-width="14" stroke-linecap="round"/>
+            </g>
+            <path d="M254 255h223v16H254z" fill="#a67a50"/><path d="M271 271v70M459 271v70" stroke="#816240" stroke-width="12"/>
+            <path d="M308 250h93l-5-9h-85z" fill="#f7f2e7"/><path d="M341 245h29" stroke="#c2b79d" stroke-width="2"/>
+            <rect x="435" y="208" width="40" height="47" rx="10" fill="#e6c780" stroke="#b28b45" stroke-width="3"/>
+            <path d="M443 216h24" stroke="#90733d" stroke-width="4" stroke-linecap="round"/><text x="456" y="241" text-anchor="middle" font-size="18" font-weight="bold" fill="#94703a">₩</text>
+          </svg>
+          <div class="coin-pop" id="coinPop" aria-hidden="true">+1원</div>
+        </div>
+        <div class="scene-foot"><span class="dot" aria-hidden="true"></span><span id="sceneMessage">아직 작지만, 여기서 시작합니다.</span></div>
+      </section>
+      <section class="wallet-panel" aria-labelledby="walletHeading">
+        <span class="eyebrow" id="walletHeading">지금 가진 돈</span>
+        <div class="balance"><span id="money">0</span><span class="unit">원</span></div>
+        <p class="balance-note">작은 일 하나에 1원씩</p>
+        <button class="earn-button" id="earnButton"><span class="button-icon" aria-hidden="true">✦</span><span>작은 일 하기</span><strong>+1원</strong></button>
+        <p class="keyboard-note">버튼을 클릭하거나, Tab으로 선택한 뒤 Enter 또는 Space</p>
+        <section class="goal-card" aria-labelledby="goalHeading">
+          <div class="goal-header"><h2 id="goalHeading">첫 목표, 100원</h2><span id="goalState">시작 전</span></div>
+          <progress id="goalProgress" max="100" value="0" aria-label="첫 100원 목표 진행률"></progress>
+          <div class="goal-numbers"><span id="goalAmount">0 / 100원</span><span id="remaining">100원 남음</span></div>
+          <p id="goalMessage">처음 모으는 돈은 직접 벌어봅니다.</p>
+        </section>
+        <div class="session-row"><span>이번에 마친 작은 일</span><strong><span id="workCount">0</span>회</strong></div>
+        <div class="prototype-note"><span>첫 제작 버전</span><p>지금은 직접 클릭해서 버는 단계입니다. 새로고침하면 처음부터 시작합니다.</p></div>
+        <button class="reset-button" id="resetButton">다시 시작</button>
+        <p class="reset-notice" id="resetNotice" role="status" aria-live="polite"></p>
+      </section>
+    </div>
+    <footer class="page-foot"><span>한푼부터 부자까지</span><span>제작기 01 · v0.1.0</span></footer>
+  </main>
+<script>
+(() => {
+  'use strict';
+  const state = { money: 0, workCount: 0 };
+  const goal = 100;
+  const get = id => document.getElementById(id);
+  const card = document.querySelector('.goal-card');
+  let animationTimer;
+
+  function render() {
+    const complete = state.money >= goal;
+    get('money').textContent = state.money.toLocaleString('ko-KR');
+    get('workCount').textContent = state.workCount.toLocaleString('ko-KR');
+    get('goalProgress').value = Math.min(state.money, goal);
+    get('goalAmount').textContent = `${Math.min(state.money, goal)} / ${goal}원`;
+    get('remaining').textContent = complete ? '첫 목표 달성' : `${goal - state.money}원 남음`;
+    get('goalState').textContent = complete ? '달성!' : state.money === 0 ? '시작 전' : '모으는 중';
+    get('goalMessage').textContent = complete ? '첫 100원을 직접 모았습니다. 계속 일을 할 수도 있어요.' : '처음 모으는 돈은 직접 벌어봅니다.';
+    get('sceneMessage').textContent = complete ? '첫 100원. 이제 다음 단계를 생각해볼 차례입니다.' : '아직 작지만, 여기서 시작합니다.';
+    card.classList.toggle('complete', complete);
+  }
+
+  get('earnButton').addEventListener('click', () => {
+    if (state.money >= Number.MAX_SAFE_INTEGER) return;
+    state.money += 1;
+    state.workCount += 1;
+    get('resetNotice').textContent = '';
+    render();
+    clearTimeout(animationTimer);
+    get('coinPop').classList.remove('pop');
+    get('room').classList.remove('working');
+    void get('coinPop').offsetWidth;
+    get('coinPop').classList.add('pop');
+    get('room').classList.add('working');
+    animationTimer = setTimeout(() => {
+      get('coinPop').classList.remove('pop');
+      get('room').classList.remove('working');
+    }, 650);
+  });
+
+  get('resetButton').addEventListener('click', () => {
+    state.money = 0;
+    state.workCount = 0;
+    clearTimeout(animationTimer);
+    get('coinPop').classList.remove('pop');
+    get('room').classList.remove('working');
+    render();
+    get('resetNotice').textContent = '작은 방에서 다시 시작합니다.';
+  });
+  render();
+})();
+
+</script>
+</body>
+</html>
