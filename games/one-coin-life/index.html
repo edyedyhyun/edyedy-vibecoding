@@ -12,7 +12,7 @@
   <main class="game">
     <header class="masthead">
       <a class="brand" href="#" aria-label="한푼부터 부자까지 처음 화면"><span class="brand-mark" aria-hidden="true">₩</span> 한푼부터 부자까지</a>
-      <span class="chapter"><span class="live-dot"></span> CHAPTER 01</span>
+      <span class="chapter"><span class="live-dot"></span> CHAPTER 02</span>
     </header>
     <div class="layout">
       <section class="scene-panel" aria-label="작은 방">
@@ -50,7 +50,7 @@
             <rect x="435" y="208" width="40" height="47" rx="10" fill="#e6c780" stroke="#b28b45" stroke-width="3"/>
             <path d="M443 216h24" stroke="#90733d" stroke-width="4" stroke-linecap="round"/><text x="456" y="241" text-anchor="middle" font-size="18" font-weight="bold" fill="#94703a">₩</text>
           </svg>
-          <div class="coin-pop" id="coinPop" aria-hidden="true">+1원</div>
+          
         </div>
         <div class="scene-foot"><span class="dot" aria-hidden="true"></span><span id="sceneMessage">아직 작지만, 여기서 시작합니다.</span></div>
       </section>
@@ -58,9 +58,9 @@
         <span class="eyebrow" id="walletHeading">TOTAL BALANCE · 보유 자금</span>
         <div class="balance"><span id="money">0</span><span class="unit">원</span></div>
         <p class="balance-note">한 번의 작은 일, 한 걸음의 성장</p>
-        <button class="earn-button" id="earnButton"><span class="button-icon" aria-hidden="true">✦</span><span>작은 일 하기</span><strong>+1원</strong></button>
+        <div class="earn-area"><button class="earn-button" id="earnButton"><span class="button-icon" aria-hidden="true">✦</span><span>작은 일 하기</span><strong>+1원</strong></button><div class="effects-layer" id="effectsLayer" aria-hidden="true"></div></div><div class="reward-receipt"><span class="receipt-dot" aria-hidden="true"></span><span id="lastReward">첫 작은 일을 시작해보세요</span></div><div class="milestone" id="milestone" role="status" hidden>첫 100원 달성! 작은 일이 모였습니다.</div>
         <p class="keyboard-note">버튼을 클릭하거나, Tab으로 선택한 뒤 Enter 또는 Space</p>
-        <section class="goal-card" aria-labelledby="goalHeading">
+        <label class="feedback-setting"><span>클릭 효과</span><input id="feedbackToggle" type="checkbox" checked><span class="switch" aria-hidden="true"></span></label><p class="sr-only" id="inputStatus" role="status" aria-live="polite" aria-atomic="true"></p><section class="goal-card" aria-labelledby="goalHeading">
           <div class="goal-header"><h2 id="goalHeading">첫 목표, 100원</h2><span id="goalState">시작 전</span></div>
           <progress id="goalProgress" max="100" value="0" aria-label="첫 100원 목표 진행률"></progress>
           <div class="goal-numbers"><span id="goalAmount">0 / 100원</span><span id="remaining">100원 남음</span></div>
@@ -72,7 +72,7 @@
         <p class="reset-notice" id="resetNotice" role="status" aria-live="polite"></p>
       </section>
     </div>
-    <footer class="page-foot"><span>한푼부터 부자까지</span><span>제작기 01 · v0.1.1</span></footer>
+    <footer class="page-foot"><span>한푼부터 부자까지</span><span>제작기 02 · v0.2.0</span></footer>
   </main>
 </body>
 </html>

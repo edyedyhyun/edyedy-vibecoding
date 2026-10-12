@@ -4,7 +4,12 @@
   const goal = 100;
   const get = id => document.getElementById(id);
   const card = document.querySelector('.goal-card');
+  const button = get('earnButton');
+  const effects = get('effectsLayer');
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let animationTimer;
+  let statusTimer;
+  let milestoneTimer;
 
   function render() {
     const complete = state.money >= goal;
@@ -19,30 +24,82 @@
     card.classList.toggle('complete', complete);
   }
 
-  get('earnButton').addEventListener('click', () => {
+  function clearFeedback() {
+    clearTimeout(animationTimer);
+    clearTimeout(statusTimer);
+    clearTimeout(milestoneTimer);
+    effects.replaceChildren();
+    get('room').classList.remove('working');
+    get('money').classList.remove('earned');
+    get('milestone').hidden = true;
+    get('inputStatus').textContent = '';
+  }
+
+  function showFeedback(event) {
+    // Animation is decoration. Disabling it never changes income.
+    get('lastReward').textContent = '+1원 · 작업 완료';
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => {
+      get('inputStatus').textContent = `${state.workCount}회 작업, ${state.money}원`;
+    }, 180);
+    if (!get('feedbackToggle').checked || reducedMotion.matches) return;
+    const rect = button.getBoundingClientRect();
+    const pointer = event.detail > 0;
+    const x = pointer ? Math.max(16, Math.min(rect.width - 16, event.clientX - rect.left)) : rect.width / 2;
+    const y = pointer ? Math.max(16, Math.min(rect.height - 12, event.clientY - rect.top)) : rect.height / 2;
+    // Bound simultaneous DOM effects during rapid input.
+    while (effects.children.length > 10) effects.firstElementChild.remove();
+    const reward = document.createElement('span');
+    reward.className = 'reward-pop';
+    reward.textContent = '+1원';
+    reward.style.left = `${x}px`;
+    reward.style.top = `${y}px`;
+    effects.append(reward);
+    reward.addEventListener('animationend', () => reward.remove(), { once: true });
+    const ring = document.createElement('span');
+    ring.className = 'tap-ring';
+    ring.style.left = `${x}px`;
+    ring.style.top = `${y}px`;
+    effects.append(ring);
+    ring.addEventListener('animationend', () => ring.remove(), { once: true });
+    clearTimeout(animationTimer);
+    get('room').classList.remove('working');
+    get('money').classList.remove('earned');
+    void get('money').offsetWidth;
+    get('room').classList.add('working');
+    get('money').classList.add('earned');
+    animationTimer = setTimeout(() => {
+      get('room').classList.remove('working');
+      get('money').classList.remove('earned');
+    }, 350);
+  }
+
+  // One income entry point: native click covers mouse, touch and keyboard.
+  // There is deliberately no additional income on pointerdown or touchend.
+  button.addEventListener('click', event => {
     if (state.money >= Number.MAX_SAFE_INTEGER) return;
     state.money += 1;
     state.workCount += 1;
     get('resetNotice').textContent = '';
     render();
-    clearTimeout(animationTimer);
-    get('coinPop').classList.remove('pop');
-    get('room').classList.remove('working');
-    void get('coinPop').offsetWidth;
-    get('coinPop').classList.add('pop');
-    get('room').classList.add('working');
-    animationTimer = setTimeout(() => {
-      get('coinPop').classList.remove('pop');
-      get('room').classList.remove('working');
-    }, 650);
+    showFeedback(event);
+    if (state.money === goal) {
+      get('milestone').hidden = false;
+      milestoneTimer = setTimeout(() => { get('milestone').hidden = true; }, 2800);
+    }
   });
 
+  button.addEventListener('keydown', event => {
+    if (event.repeat && ['Enter', ' ', 'Spacebar'].includes(event.key)) event.preventDefault();
+  });
+
+  get('feedbackToggle').addEventListener('change', clearFeedback);
+  reducedMotion.addEventListener('change', clearFeedback);
   get('resetButton').addEventListener('click', () => {
     state.money = 0;
     state.workCount = 0;
-    clearTimeout(animationTimer);
-    get('coinPop').classList.remove('pop');
-    get('room').classList.remove('working');
+    clearFeedback();
+    get('lastReward').textContent = '첫 작은 일을 시작해보세요';
     render();
     get('resetNotice').textContent = '작은 방에서 다시 시작합니다.';
   });

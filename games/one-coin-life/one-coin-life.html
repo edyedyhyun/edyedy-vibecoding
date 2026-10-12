@@ -498,6 +498,29 @@ progress,progress::-webkit-progress-bar { background:#344154; }
 button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
 @media(max-width:760px) { .game { padding:20px 16px; } .masthead { padding-bottom:20px; } .brand { font-size:15px; } .chapter { font-size:8px; padding:6px 8px; } .layout { gap:16px; } .scene-panel,.wallet-panel { padding:22px; border-radius:20px; } h1 { font-size:30px; } .room { margin-top:20px; padding-top:30px; } .balance { font-size:60px; min-height:72px; } .scene-foot { margin-top:14px; } .wallet-panel { width:100%; } }
 
+/* Episode 2: input feedback remains separate from reward calculation. */
+.earn-area { position:relative; }
+.effects-layer { position:absolute; inset:0; pointer-events:none; overflow:visible; z-index:3; }
+.reward-pop { position:absolute; color:#efffcf; font-size:22px; font-weight:850; text-shadow:0 2px 8px #254115; white-space:nowrap; animation:reward-float .8s ease-out forwards; }
+.tap-ring { position:absolute; width:14px; height:14px; border:2px solid #f4ffdf; border-radius:50%; animation:tap-expand .45s ease-out forwards; }
+.reward-receipt { display:flex; align-items:center; justify-content:center; gap:7px; color:#bad9a8; margin-top:15px; font-size:11px; min-height:18px; }
+.receipt-dot { width:5px; height:5px; border-radius:50%; background:#a9e870; }
+.keyboard-note { margin-top:8px; margin-bottom:17px; }
+.feedback-setting { display:flex; align-items:center; gap:10px; justify-content:flex-end; color:#a8b8cc; font-size:11px; margin-bottom:18px; cursor:pointer; }
+.feedback-setting input { position:absolute; opacity:0; width:34px; height:20px; }
+.switch { width:34px; height:20px; padding:3px; background:#435267; border-radius:20px; }
+.switch::before { content:''; display:block; width:14px; height:14px; border-radius:50%; background:white; transition:transform .15s; }
+.feedback-setting input:checked+.switch { background:#679848; }
+.feedback-setting input:checked+.switch::before { transform:translateX(14px); }
+.feedback-setting input:focus-visible+.switch { outline:3px solid #c2f29c; outline-offset:3px; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.balance #money.earned { animation:balance-pulse .3s ease-out; }
+.milestone { border:1px solid #547540; border-radius:10px; padding:12px; background:#243822; color:#d5f5bd; font-size:12px; margin-top:14px; }
+@keyframes reward-float { 0% {opacity:1;transform:translate(-50%,-65%) scale(.88)} 25% {transform:translate(-50%,-110%) scale(1.06)} 100% {opacity:0;transform:translate(-50%,-310%) scale(1)} }
+@keyframes tap-expand { from {opacity:.8;transform:translate(-50%,-50%) scale(.6)} to {opacity:0;transform:translate(-50%,-50%) scale(4)} }
+@keyframes balance-pulse { 40% {color:#bafa89;transform:translateY(-2px)} }
+@media(prefers-reduced-motion:reduce) { .reward-pop,.tap-ring {display:none;} }
+
 </style>
   
 </head>
@@ -505,7 +528,7 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
   <main class="game">
     <header class="masthead">
       <a class="brand" href="#" aria-label="한푼부터 부자까지 처음 화면"><span class="brand-mark" aria-hidden="true">₩</span> 한푼부터 부자까지</a>
-      <span class="chapter"><span class="live-dot"></span> CHAPTER 01</span>
+      <span class="chapter"><span class="live-dot"></span> CHAPTER 02</span>
     </header>
     <div class="layout">
       <section class="scene-panel" aria-label="작은 방">
@@ -543,7 +566,7 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
             <rect x="435" y="208" width="40" height="47" rx="10" fill="#e6c780" stroke="#b28b45" stroke-width="3"/>
             <path d="M443 216h24" stroke="#90733d" stroke-width="4" stroke-linecap="round"/><text x="456" y="241" text-anchor="middle" font-size="18" font-weight="bold" fill="#94703a">₩</text>
           </svg>
-          <div class="coin-pop" id="coinPop" aria-hidden="true">+1원</div>
+          
         </div>
         <div class="scene-foot"><span class="dot" aria-hidden="true"></span><span id="sceneMessage">아직 작지만, 여기서 시작합니다.</span></div>
       </section>
@@ -551,9 +574,9 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
         <span class="eyebrow" id="walletHeading">TOTAL BALANCE · 보유 자금</span>
         <div class="balance"><span id="money">0</span><span class="unit">원</span></div>
         <p class="balance-note">한 번의 작은 일, 한 걸음의 성장</p>
-        <button class="earn-button" id="earnButton"><span class="button-icon" aria-hidden="true">✦</span><span>작은 일 하기</span><strong>+1원</strong></button>
+        <div class="earn-area"><button class="earn-button" id="earnButton"><span class="button-icon" aria-hidden="true">✦</span><span>작은 일 하기</span><strong>+1원</strong></button><div class="effects-layer" id="effectsLayer" aria-hidden="true"></div></div><div class="reward-receipt"><span class="receipt-dot" aria-hidden="true"></span><span id="lastReward">첫 작은 일을 시작해보세요</span></div><div class="milestone" id="milestone" role="status" hidden>첫 100원 달성! 작은 일이 모였습니다.</div>
         <p class="keyboard-note">버튼을 클릭하거나, Tab으로 선택한 뒤 Enter 또는 Space</p>
-        <section class="goal-card" aria-labelledby="goalHeading">
+        <label class="feedback-setting"><span>클릭 효과</span><input id="feedbackToggle" type="checkbox" checked><span class="switch" aria-hidden="true"></span></label><p class="sr-only" id="inputStatus" role="status" aria-live="polite" aria-atomic="true"></p><section class="goal-card" aria-labelledby="goalHeading">
           <div class="goal-header"><h2 id="goalHeading">첫 목표, 100원</h2><span id="goalState">시작 전</span></div>
           <progress id="goalProgress" max="100" value="0" aria-label="첫 100원 목표 진행률"></progress>
           <div class="goal-numbers"><span id="goalAmount">0 / 100원</span><span id="remaining">100원 남음</span></div>
@@ -565,7 +588,7 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
         <p class="reset-notice" id="resetNotice" role="status" aria-live="polite"></p>
       </section>
     </div>
-    <footer class="page-foot"><span>한푼부터 부자까지</span><span>제작기 01 · v0.1.1</span></footer>
+    <footer class="page-foot"><span>한푼부터 부자까지</span><span>제작기 02 · v0.2.0</span></footer>
   </main>
 <script>
 (() => {
@@ -574,7 +597,12 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
   const goal = 100;
   const get = id => document.getElementById(id);
   const card = document.querySelector('.goal-card');
+  const button = get('earnButton');
+  const effects = get('effectsLayer');
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let animationTimer;
+  let statusTimer;
+  let milestoneTimer;
 
   function render() {
     const complete = state.money >= goal;
@@ -589,30 +617,82 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
     card.classList.toggle('complete', complete);
   }
 
-  get('earnButton').addEventListener('click', () => {
+  function clearFeedback() {
+    clearTimeout(animationTimer);
+    clearTimeout(statusTimer);
+    clearTimeout(milestoneTimer);
+    effects.replaceChildren();
+    get('room').classList.remove('working');
+    get('money').classList.remove('earned');
+    get('milestone').hidden = true;
+    get('inputStatus').textContent = '';
+  }
+
+  function showFeedback(event) {
+    // Animation is decoration. Disabling it never changes income.
+    get('lastReward').textContent = '+1원 · 작업 완료';
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => {
+      get('inputStatus').textContent = `${state.workCount}회 작업, ${state.money}원`;
+    }, 180);
+    if (!get('feedbackToggle').checked || reducedMotion.matches) return;
+    const rect = button.getBoundingClientRect();
+    const pointer = event.detail > 0;
+    const x = pointer ? Math.max(16, Math.min(rect.width - 16, event.clientX - rect.left)) : rect.width / 2;
+    const y = pointer ? Math.max(16, Math.min(rect.height - 12, event.clientY - rect.top)) : rect.height / 2;
+    // Bound simultaneous DOM effects during rapid input.
+    while (effects.children.length > 10) effects.firstElementChild.remove();
+    const reward = document.createElement('span');
+    reward.className = 'reward-pop';
+    reward.textContent = '+1원';
+    reward.style.left = `${x}px`;
+    reward.style.top = `${y}px`;
+    effects.append(reward);
+    reward.addEventListener('animationend', () => reward.remove(), { once: true });
+    const ring = document.createElement('span');
+    ring.className = 'tap-ring';
+    ring.style.left = `${x}px`;
+    ring.style.top = `${y}px`;
+    effects.append(ring);
+    ring.addEventListener('animationend', () => ring.remove(), { once: true });
+    clearTimeout(animationTimer);
+    get('room').classList.remove('working');
+    get('money').classList.remove('earned');
+    void get('money').offsetWidth;
+    get('room').classList.add('working');
+    get('money').classList.add('earned');
+    animationTimer = setTimeout(() => {
+      get('room').classList.remove('working');
+      get('money').classList.remove('earned');
+    }, 350);
+  }
+
+  // One income entry point: native click covers mouse, touch and keyboard.
+  // There is deliberately no additional income on pointerdown or touchend.
+  button.addEventListener('click', event => {
     if (state.money >= Number.MAX_SAFE_INTEGER) return;
     state.money += 1;
     state.workCount += 1;
     get('resetNotice').textContent = '';
     render();
-    clearTimeout(animationTimer);
-    get('coinPop').classList.remove('pop');
-    get('room').classList.remove('working');
-    void get('coinPop').offsetWidth;
-    get('coinPop').classList.add('pop');
-    get('room').classList.add('working');
-    animationTimer = setTimeout(() => {
-      get('coinPop').classList.remove('pop');
-      get('room').classList.remove('working');
-    }, 650);
+    showFeedback(event);
+    if (state.money === goal) {
+      get('milestone').hidden = false;
+      milestoneTimer = setTimeout(() => { get('milestone').hidden = true; }, 2800);
+    }
   });
 
+  button.addEventListener('keydown', event => {
+    if (event.repeat && ['Enter', ' ', 'Spacebar'].includes(event.key)) event.preventDefault();
+  });
+
+  get('feedbackToggle').addEventListener('change', clearFeedback);
+  reducedMotion.addEventListener('change', clearFeedback);
   get('resetButton').addEventListener('click', () => {
     state.money = 0;
     state.workCount = 0;
-    clearTimeout(animationTimer);
-    get('coinPop').classList.remove('pop');
-    get('room').classList.remove('working');
+    clearFeedback();
+    get('lastReward').textContent = '첫 작은 일을 시작해보세요';
     render();
     get('resetNotice').textContent = '작은 방에서 다시 시작합니다.';
   });

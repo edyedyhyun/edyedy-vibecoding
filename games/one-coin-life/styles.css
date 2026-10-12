@@ -489,3 +489,26 @@ progress,progress::-webkit-progress-bar { background:#344154; }
 .page-foot { border:0; color:#6d7f96; margin-top:22px; }
 button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
 @media(max-width:760px) { .game { padding:20px 16px; } .masthead { padding-bottom:20px; } .brand { font-size:15px; } .chapter { font-size:8px; padding:6px 8px; } .layout { gap:16px; } .scene-panel,.wallet-panel { padding:22px; border-radius:20px; } h1 { font-size:30px; } .room { margin-top:20px; padding-top:30px; } .balance { font-size:60px; min-height:72px; } .scene-foot { margin-top:14px; } .wallet-panel { width:100%; } }
+
+/* Episode 2: input feedback remains separate from reward calculation. */
+.earn-area { position:relative; }
+.effects-layer { position:absolute; inset:0; pointer-events:none; overflow:visible; z-index:3; }
+.reward-pop { position:absolute; color:#efffcf; font-size:22px; font-weight:850; text-shadow:0 2px 8px #254115; white-space:nowrap; animation:reward-float .8s ease-out forwards; }
+.tap-ring { position:absolute; width:14px; height:14px; border:2px solid #f4ffdf; border-radius:50%; animation:tap-expand .45s ease-out forwards; }
+.reward-receipt { display:flex; align-items:center; justify-content:center; gap:7px; color:#bad9a8; margin-top:15px; font-size:11px; min-height:18px; }
+.receipt-dot { width:5px; height:5px; border-radius:50%; background:#a9e870; }
+.keyboard-note { margin-top:8px; margin-bottom:17px; }
+.feedback-setting { display:flex; align-items:center; gap:10px; justify-content:flex-end; color:#a8b8cc; font-size:11px; margin-bottom:18px; cursor:pointer; }
+.feedback-setting input { position:absolute; opacity:0; width:34px; height:20px; }
+.switch { width:34px; height:20px; padding:3px; background:#435267; border-radius:20px; }
+.switch::before { content:''; display:block; width:14px; height:14px; border-radius:50%; background:white; transition:transform .15s; }
+.feedback-setting input:checked+.switch { background:#679848; }
+.feedback-setting input:checked+.switch::before { transform:translateX(14px); }
+.feedback-setting input:focus-visible+.switch { outline:3px solid #c2f29c; outline-offset:3px; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.balance #money.earned { animation:balance-pulse .3s ease-out; }
+.milestone { border:1px solid #547540; border-radius:10px; padding:12px; background:#243822; color:#d5f5bd; font-size:12px; margin-top:14px; }
+@keyframes reward-float { 0% {opacity:1;transform:translate(-50%,-65%) scale(.88)} 25% {transform:translate(-50%,-110%) scale(1.06)} 100% {opacity:0;transform:translate(-50%,-310%) scale(1)} }
+@keyframes tap-expand { from {opacity:.8;transform:translate(-50%,-50%) scale(.6)} to {opacity:0;transform:translate(-50%,-50%) scale(4)} }
+@keyframes balance-pulse { 40% {color:#bafa89;transform:translateY(-2px)} }
+@media(prefers-reduced-motion:reduce) { .reward-pop,.tap-ring {display:none;} }

@@ -1,6 +1,6 @@
 # 한푼부터 부자까지
 
-하나의 게임을 클릭 프로토타입에서 공개 가능한 방치형 웹 게임으로 발전시키는 연재 프로젝트입니다. 현재는 제작기 01, **v0.1.1**입니다.
+하나의 게임을 클릭 프로토타입에서 공개 가능한 방치형 웹 게임으로 발전시키는 연재 프로젝트입니다. 현재는 제작기 01, **v0.2.0**입니다.
 
 ## 현재 버전 실행
 
@@ -9,12 +9,12 @@
 분리된 소스를 확인하려면:
 
 ```sh
-git clone --depth 1 --branch one-coin-life-ep01-design https://github.com/edyedyhyun/edyedy-vibecoding.git one-coin-life-ep01-design
-cd one-coin-life-ep01-design/games/one-coin-life
+git clone --depth 1 --branch one-coin-life-ep02 https://github.com/edyedyhyun/edyedy-vibecoding.git one-coin-life-ep02
+cd one-coin-life-ep02/games/one-coin-life
 python3 -m http.server 8000
 ```
 
-Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`를 `python`으로 바꾸세요. 브라우저에서 `http://localhost:8000`을 엽니다. 이후 편의 코드가 달라져도 `one-coin-life-ep01-design` 태그에서 이 편의 상태를 그대로 받을 수 있습니다.
+Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`를 `python`으로 바꾸세요. 브라우저에서 `http://localhost:8000`을 엽니다. 이후 편의 코드가 달라져도 `one-coin-life-ep02` 태그에서 이 편의 상태를 그대로 받을 수 있습니다.
 
 ## 제작기 01의 기능
 
@@ -58,3 +58,13 @@ python3 build.py
 캐릭터와 방은 이 프로젝트에서 SVG로 직접 그렸습니다. 표지는 별도로 생성한 컨셉 이미지이며 현재 플레이 화면과 구분합니다.
 
 전체 진행 순서는 [연재 계획](ROADMAP.md)을 참고하세요.
+
+## 제작기 2: 클릭 반응
+
+- 클릭 위치에서 +1원과 원형 효과, 잔액 강조와 캐릭터 반응. 키보드는 버튼 중앙 기준.
+- 효과를 꺼도 수입과 작업 횟수는 동일. OS 동작 줄이기 설정에서는 이동 효과 생략.
+- 수입은 네이티브 click 하나에서만 처리. pointerdown/touchend에 수입을 중복 등록하지 않음.
+- Enter/Space 자동 반복 keydown 방지. 수동으로 다시 누르는 입력은 허용.
+- 동시 효과 요소 최대 12개. 효과는 animationend에서 제거.
+- 목표 달성 안내, 입력 상태의 지연된 접근성 안내. 저장·강화·자동 수입은 아직 없음.
+- 검증: `node tests/input-feedback.test.cjs` (Node가 있을 때), 브라우저 클릭·Enter·Space·효과 끄기·목표·재시작·390px 레이아웃. 실제 휴대폰 터치는 아직 미검증.
