@@ -523,12 +523,13 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
 
 </style>
   
+  
 </head>
 <body>
   <main class="game">
     <header class="masthead">
       <a class="brand" href="#" aria-label="한푼부터 부자까지 처음 화면"><span class="brand-mark" aria-hidden="true">₩</span> 한푼부터 부자까지</a>
-      <span class="chapter"><span class="live-dot"></span> CHAPTER 02</span>
+      <span class="chapter"><span class="live-dot"></span> CHAPTER 03</span>
     </header>
     <div class="layout">
       <section class="scene-panel" aria-label="작은 방">
@@ -588,13 +589,53 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
         <p class="reset-notice" id="resetNotice" role="status" aria-live="polite"></p>
       </section>
     </div>
-    <footer class="page-foot"><span>한푼부터 부자까지</span><span>제작기 02 · v0.2.0</span></footer>
+    <footer class="page-foot"><span>한푼부터 부자까지</span><span>제작기 03 · v0.3.0</span></footer>
   </main>
 <script>
+/* Pure local economy rules: no DOM, timers, storage or network. */
+(function (root, factory) {
+  const rules = factory();
+  if (typeof module === 'object' && module.exports) module.exports = rules;
+  else root.CoinEconomy = rules;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  const GOAL = 100;
+  const REWARD = 1;
+  function initialState() { return { money: 0, workCount: 0 }; }
+  function validate(state) {
+    if (!state || !Number.isSafeInteger(state.money) || state.money < 0 ||
+        !Number.isSafeInteger(state.workCount) || state.workCount < 0) {
+      throw new TypeError('money and workCount must be non-negative safe integers');
+    }
+  }
+  function goalView(state) {
+    validate(state);
+    return {
+      complete: state.money >= GOAL,
+      progress: Math.min(state.money, GOAL),
+      remaining: Math.max(0, GOAL - state.money)
+    };
+  }
+  function earn(state) {
+    validate(state);
+    if (state.money > Number.MAX_SAFE_INTEGER - REWARD || state.workCount === Number.MAX_SAFE_INTEGER) {
+      return { state: { ...state }, reward: 0, goalReached: false };
+    }
+    const next = { money: state.money + REWARD, workCount: state.workCount + 1 };
+    return {
+      state: next,
+      reward: REWARD,
+      goalReached: state.money < GOAL && next.money >= GOAL
+    };
+  }
+  return Object.freeze({ GOAL, REWARD, initialState, goalView, earn });
+});
+
 (() => {
   'use strict';
-  const state = { money: 0, workCount: 0 };
-  const goal = 100;
+  const economy = CoinEconomy;
+  let state = economy.initialState();
+  const goal = economy.GOAL;
   const get = id => document.getElementById(id);
   const card = document.querySelector('.goal-card');
   const button = get('earnButton');
@@ -605,12 +646,13 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
   let milestoneTimer;
 
   function render() {
-    const complete = state.money >= goal;
+    const view = economy.goalView(state);
+    const complete = view.complete;
     get('money').textContent = state.money.toLocaleString('ko-KR');
     get('workCount').textContent = state.workCount.toLocaleString('ko-KR');
-    get('goalProgress').value = Math.min(state.money, goal);
-    get('goalAmount').textContent = `${Math.min(state.money, goal)} / ${goal}원`;
-    get('remaining').textContent = complete ? '첫 목표 달성' : `${goal - state.money}원 남음`;
+    get('goalProgress').value = view.progress;
+    get('goalAmount').textContent = `${view.progress} / ${goal}원`;
+    get('remaining').textContent = complete ? '첫 목표 달성' : `${view.remaining}원 남음`;
     get('goalState').textContent = complete ? '달성!' : state.money === 0 ? '시작 전' : '모으는 중';
     get('goalMessage').textContent = complete ? '첫 100원을 직접 모았습니다. 계속 일을 할 수도 있어요.' : '처음 모으는 돈은 직접 벌어봅니다.';
     get('sceneMessage').textContent = complete ? '첫 100원. 이제 다음 단계를 생각해볼 차례입니다.' : '아직 작지만, 여기서 시작합니다.';
@@ -628,9 +670,9 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
     get('inputStatus').textContent = '';
   }
 
-  function showFeedback(event) {
+  function showFeedback(event, amount) {
     // Animation is decoration. Disabling it never changes income.
-    get('lastReward').textContent = '+1원 · 작업 완료';
+    get('lastReward').textContent = `+${amount}원 · 작업 완료`;
     clearTimeout(statusTimer);
     statusTimer = setTimeout(() => {
       get('inputStatus').textContent = `${state.workCount}회 작업, ${state.money}원`;
@@ -644,7 +686,7 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
     while (effects.children.length > 10) effects.firstElementChild.remove();
     const reward = document.createElement('span');
     reward.className = 'reward-pop';
-    reward.textContent = '+1원';
+    reward.textContent = `+${amount}원`;
     reward.style.left = `${x}px`;
     reward.style.top = `${y}px`;
     effects.append(reward);
@@ -670,13 +712,13 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
   // One income entry point: native click covers mouse, touch and keyboard.
   // There is deliberately no additional income on pointerdown or touchend.
   button.addEventListener('click', event => {
-    if (state.money >= Number.MAX_SAFE_INTEGER) return;
-    state.money += 1;
-    state.workCount += 1;
+    const result = economy.earn(state);
+    if (result.reward === 0) return;
+    state = result.state;
     get('resetNotice').textContent = '';
     render();
-    showFeedback(event);
-    if (state.money === goal) {
+    showFeedback(event, result.reward);
+    if (result.goalReached) {
       get('milestone').hidden = false;
       milestoneTimer = setTimeout(() => { get('milestone').hidden = true; }, 2800);
     }
@@ -689,8 +731,7 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
   get('feedbackToggle').addEventListener('change', clearFeedback);
   reducedMotion.addEventListener('change', clearFeedback);
   get('resetButton').addEventListener('click', () => {
-    state.money = 0;
-    state.workCount = 0;
+    state = economy.initialState();
     clearFeedback();
     get('lastReward').textContent = '첫 작은 일을 시작해보세요';
     render();

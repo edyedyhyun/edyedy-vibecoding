@@ -1,7 +1,8 @@
 (() => {
   'use strict';
-  const state = { money: 0, workCount: 0 };
-  const goal = 100;
+  const economy = CoinEconomy;
+  let state = economy.initialState();
+  const goal = economy.GOAL;
   const get = id => document.getElementById(id);
   const card = document.querySelector('.goal-card');
   const button = get('earnButton');
@@ -12,12 +13,13 @@
   let milestoneTimer;
 
   function render() {
-    const complete = state.money >= goal;
+    const view = economy.goalView(state);
+    const complete = view.complete;
     get('money').textContent = state.money.toLocaleString('ko-KR');
     get('workCount').textContent = state.workCount.toLocaleString('ko-KR');
-    get('goalProgress').value = Math.min(state.money, goal);
-    get('goalAmount').textContent = `${Math.min(state.money, goal)} / ${goal}원`;
-    get('remaining').textContent = complete ? '첫 목표 달성' : `${goal - state.money}원 남음`;
+    get('goalProgress').value = view.progress;
+    get('goalAmount').textContent = `${view.progress} / ${goal}원`;
+    get('remaining').textContent = complete ? '첫 목표 달성' : `${view.remaining}원 남음`;
     get('goalState').textContent = complete ? '달성!' : state.money === 0 ? '시작 전' : '모으는 중';
     get('goalMessage').textContent = complete ? '첫 100원을 직접 모았습니다. 계속 일을 할 수도 있어요.' : '처음 모으는 돈은 직접 벌어봅니다.';
     get('sceneMessage').textContent = complete ? '첫 100원. 이제 다음 단계를 생각해볼 차례입니다.' : '아직 작지만, 여기서 시작합니다.';
@@ -35,9 +37,9 @@
     get('inputStatus').textContent = '';
   }
 
-  function showFeedback(event) {
+  function showFeedback(event, amount) {
     // Animation is decoration. Disabling it never changes income.
-    get('lastReward').textContent = '+1원 · 작업 완료';
+    get('lastReward').textContent = `+${amount}원 · 작업 완료`;
     clearTimeout(statusTimer);
     statusTimer = setTimeout(() => {
       get('inputStatus').textContent = `${state.workCount}회 작업, ${state.money}원`;
@@ -51,7 +53,7 @@
     while (effects.children.length > 10) effects.firstElementChild.remove();
     const reward = document.createElement('span');
     reward.className = 'reward-pop';
-    reward.textContent = '+1원';
+    reward.textContent = `+${amount}원`;
     reward.style.left = `${x}px`;
     reward.style.top = `${y}px`;
     effects.append(reward);
@@ -77,13 +79,13 @@
   // One income entry point: native click covers mouse, touch and keyboard.
   // There is deliberately no additional income on pointerdown or touchend.
   button.addEventListener('click', event => {
-    if (state.money >= Number.MAX_SAFE_INTEGER) return;
-    state.money += 1;
-    state.workCount += 1;
+    const result = economy.earn(state);
+    if (result.reward === 0) return;
+    state = result.state;
     get('resetNotice').textContent = '';
     render();
-    showFeedback(event);
-    if (state.money === goal) {
+    showFeedback(event, result.reward);
+    if (result.goalReached) {
       get('milestone').hidden = false;
       milestoneTimer = setTimeout(() => { get('milestone').hidden = true; }, 2800);
     }
@@ -96,8 +98,7 @@
   get('feedbackToggle').addEventListener('change', clearFeedback);
   reducedMotion.addEventListener('change', clearFeedback);
   get('resetButton').addEventListener('click', () => {
-    state.money = 0;
-    state.workCount = 0;
+    state = economy.initialState();
     clearFeedback();
     get('lastReward').textContent = '첫 작은 일을 시작해보세요';
     render();

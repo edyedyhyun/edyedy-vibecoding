@@ -1,6 +1,6 @@
 # 한푼부터 부자까지
 
-하나의 게임을 클릭 프로토타입에서 공개 가능한 방치형 웹 게임으로 발전시키는 연재 프로젝트입니다. 현재는 제작기 01, **v0.2.0**입니다.
+하나의 게임을 클릭 프로토타입에서 공개 가능한 방치형 웹 게임으로 발전시키는 연재 프로젝트입니다. 현재는 제작기 01, **v0.3.0**입니다.
 
 ## 현재 버전 실행
 
@@ -9,12 +9,12 @@
 분리된 소스를 확인하려면:
 
 ```sh
-git clone --depth 1 --branch one-coin-life-ep02 https://github.com/edyedyhyun/edyedy-vibecoding.git one-coin-life-ep02
-cd one-coin-life-ep02/games/one-coin-life
+git clone --depth 1 --branch one-coin-life-ep03 https://github.com/edyedyhyun/edyedy-vibecoding.git one-coin-life-ep03
+cd one-coin-life-ep03/games/one-coin-life
 python3 -m http.server 8000
 ```
 
-Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`를 `python`으로 바꾸세요. 브라우저에서 `http://localhost:8000`을 엽니다. 이후 편의 코드가 달라져도 `one-coin-life-ep02` 태그에서 이 편의 상태를 그대로 받을 수 있습니다.
+Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`를 `python`으로 바꾸세요. 브라우저에서 `http://localhost:8000`을 엽니다. 이후 편의 코드가 달라져도 `one-coin-life-ep03` 태그에서 이 편의 상태를 그대로 받을 수 있습니다.
 
 ## 제작기 01의 기능
 
@@ -68,3 +68,11 @@ python3 build.py
 - 동시 효과 요소 최대 12개. 효과는 animationend에서 제거.
 - 목표 달성 안내, 입력 상태의 지연된 접근성 안내. 저장·강화·자동 수입은 아직 없음.
 - 검증: `node tests/input-feedback.test.cjs` (Node가 있을 때), 브라우저 클릭·Enter·Space·효과 끄기·목표·재시작·390px 레이아웃. 실제 휴대폰 터치는 아직 미검증.
+
+## 제작기 3: 계산과 화면 분리
+
+`economy.js`는 순수 계산 규칙입니다. `initialState()`, `earn(state)`, `goalView(state)`를 제공하며 DOM·타이머·저장소를 읽지 않습니다. earn은 이전 상태를 수정하지 않고 새 상태, 실제 지급액, 목표 도달 여부를 반환합니다. `app.js`는 입력과 렌더링·효과를 담당합니다. 브라우저 로컬 규칙이며 서버 검증이나 조작 방지를 구현한 것은 아닙니다.
+
+검증: `node tests/economy.test.cjs` (10개), `node tests/input-feedback.test.cjs` (이전 입력 계약). Node 없이도 로컬 서버에서 `checks.html`을 열어 검증 버튼을 누를 수 있습니다. 단일 HTML 다운로드에는 검증 화면이 아닌 게임 자체가 포함됩니다.
+
+이전 버전은 태그 `one-coin-life-ep01-design`, `one-coin-life-ep02`에서 받을 수 있습니다. 강화·자동 수입·저장은 후속 회차입니다.
