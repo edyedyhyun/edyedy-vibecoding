@@ -18,10 +18,17 @@
     get('money').textContent = state.money.toLocaleString('ko-KR');
     get('workCount').textContent = state.workCount.toLocaleString('ko-KR');
     get('goalProgress').value = view.progress;
-    get('goalAmount').textContent = `${view.progress} / ${goal}원`;
+    get('goalAmount').textContent = `누적 ${state.totalEarned.toLocaleString('ko-KR')} / ${goal}원`;
+    const tool = economy.toolView(state);
+    get('earnAmount').textContent = `+${economy.income(state)}원`;
+    get('rateNote').textContent = `작은 일 한 번에 ${economy.income(state)}원`;
+    get('buyTool').disabled = !tool.canBuy;
+    get('buyTool').textContent = tool.owned ? '구매 완료' : tool.canBuy ? '작업 도구 구매 · 50원' : `구매까지 ${tool.shortage}원 필요`;
+    get('toolState').textContent = tool.owned ? '보유 중 · 클릭당 2원' : '클릭당 1원 → 2원';
+    get('room').classList.toggle('upgraded', tool.owned);
     get('remaining').textContent = complete ? '첫 목표 달성' : `${view.remaining}원 남음`;
-    get('goalState').textContent = complete ? '달성!' : state.money === 0 ? '시작 전' : '모으는 중';
-    get('goalMessage').textContent = complete ? '첫 100원을 직접 모았습니다. 계속 일을 할 수도 있어요.' : '처음 모으는 돈은 직접 벌어봅니다.';
+    get('goalState').textContent = complete ? '달성!' : state.totalEarned === 0 ? '시작 전' : '모으는 중';
+    get('goalMessage').textContent = complete ? '누적 수입 100원 달성. 구매해도 기록은 남습니다.' : '쓴 돈을 포함해 총 100원을 벌어보세요.';
     get('sceneMessage').textContent = complete ? '첫 100원. 이제 다음 단계를 생각해볼 차례입니다.' : '아직 작지만, 여기서 시작합니다.';
     card.classList.toggle('complete', complete);
   }
@@ -95,12 +102,23 @@
     if (event.repeat && ['Enter', ' ', 'Spacebar'].includes(event.key)) event.preventDefault();
   });
 
+  get('buyTool').addEventListener('click', () => {
+    const result = economy.buyTool(state);
+    if (!result.purchased) return;
+    state = result.state;
+    clearFeedback();
+    render();
+    get('lastReward').textContent = '−50원 · 작업 도구 구매';
+    get('purchaseStatus').textContent = '작업 도구를 샀습니다. 이제 한 번에 2원을 법니다.';
+  });
+
   get('feedbackToggle').addEventListener('change', clearFeedback);
   reducedMotion.addEventListener('change', clearFeedback);
   get('resetButton').addEventListener('click', () => {
     state = economy.initialState();
     clearFeedback();
     get('lastReward').textContent = '첫 작은 일을 시작해보세요';
+    get('purchaseStatus').textContent = '';
     render();
     get('resetNotice').textContent = '작은 방에서 다시 시작합니다.';
   });

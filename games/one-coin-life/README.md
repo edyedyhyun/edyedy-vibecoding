@@ -1,6 +1,6 @@
 # 한푼부터 부자까지
 
-하나의 게임을 클릭 프로토타입에서 공개 가능한 방치형 웹 게임으로 발전시키는 연재 프로젝트입니다. 현재는 제작기 01, **v0.3.0**입니다.
+하나의 게임을 클릭 프로토타입에서 공개 가능한 방치형 웹 게임으로 발전시키는 연재 프로젝트입니다. 현재는 제작기 01, **v0.4.0**입니다.
 
 ## 현재 버전 실행
 
@@ -9,12 +9,12 @@
 분리된 소스를 확인하려면:
 
 ```sh
-git clone --depth 1 --branch one-coin-life-ep03 https://github.com/edyedyhyun/edyedy-vibecoding.git one-coin-life-ep03
-cd one-coin-life-ep03/games/one-coin-life
+git clone --depth 1 --branch one-coin-life-ep04 https://github.com/edyedyhyun/edyedy-vibecoding.git one-coin-life-ep04
+cd one-coin-life-ep04/games/one-coin-life
 python3 -m http.server 8000
 ```
 
-Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`를 `python`으로 바꾸세요. 브라우저에서 `http://localhost:8000`을 엽니다. 이후 편의 코드가 달라져도 `one-coin-life-ep03` 태그에서 이 편의 상태를 그대로 받을 수 있습니다.
+Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`를 `python`으로 바꾸세요. 브라우저에서 `http://localhost:8000`을 엽니다. 이후 편의 코드가 달라져도 `one-coin-life-ep04` 태그에서 이 편의 상태를 그대로 받을 수 있습니다.
 
 ## 제작기 01의 기능
 
@@ -76,3 +76,9 @@ python3 build.py
 검증: `node tests/economy.test.cjs` (10개), `node tests/input-feedback.test.cjs` (이전 입력 계약). Node 없이도 로컬 서버에서 `checks.html`을 열어 검증 버튼을 누를 수 있습니다. 단일 HTML 다운로드에는 검증 화면이 아닌 게임 자체가 포함됩니다.
 
 이전 버전은 태그 `one-coin-life-ep01-design`, `one-coin-life-ep02`에서 받을 수 있습니다. 강화·자동 수입·저장은 후속 회차입니다.
+
+## 제작기 4: 첫 작업 도구
+
+50원짜리 작업 도구를 한 번 사면 작업당 수입이 1원에서 2원으로 증가합니다. 미보유·잔액49원 이하는 구매 불가. 구매 후 재구매와 추가 차감은 없습니다. 목표는 누적 수입100원이며 보유금과 구분합니다. totalEarned는 수입에만 증가하고 구매시 유지합니다. reset/reload는 도구까지 초기화합니다. 저장·자동수입은 아직 없습니다.
+
+검증 18개: node tests/economy.test.cjs 및 브라우저 checks.html. 입력/구매 연동: node tests/input-feedback.test.cjs. 실제 브라우저49→50→구매0→1회2원→총75회/보유50/누적100,모바일390px폭 확인. 실제휴대폰터치미검증. 이전 태그 one-coin-life-ep03은3편 상태를 보존합니다.

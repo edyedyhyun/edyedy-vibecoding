@@ -512,3 +512,18 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
 @keyframes tap-expand { from {opacity:.8;transform:translate(-50%,-50%) scale(.6)} to {opacity:0;transform:translate(-50%,-50%) scale(4)} }
 @keyframes balance-pulse { 40% {color:#bafa89;transform:translateY(-2px)} }
 @media(prefers-reduced-motion:reduce) { .reward-pop,.tap-ring {display:none;} }
+
+/* Episode 4: a real, one-time upgrade. */
+.upgrade-card { border:1px solid #445c3d; border-radius:16px; padding:18px; background:linear-gradient(135deg,#24342a,#1a2630); margin-bottom:18px; }
+.upgrade-title { display:flex; gap:11px; align-items:center; }
+.upgrade-title .eyebrow { font-size:8px; margin-bottom:5px; }
+.tool-icon { display:grid; place-items:center; width:40px; height:40px; border-radius:11px; background:#354d2f; color:#b6ee8a; font-size:27px; }
+.tool-price { margin-left:auto; color:#d5efbd; font-size:15px; font-weight:750; }
+.upgrade-card>p { font-size:12px; color:#b3c5af; margin:14px 0; }
+.buy-button { width:100%; min-height:46px; border:1px solid #a9e870; border-radius:10px; background:#a9e870; color:#172614; font-weight:750; font-size:13px; }
+.buy-button:disabled { background:#28372e; border-color:#445548; color:#8fa68d; cursor:default; }
+.upgrade-card>.purchase-status { margin:10px 0 0; min-height:0; line-height:1.6; font-size:11px; color:#cef1b2; }
+.purchase-status:empty { display:none; }
+.owned-tool { display:none; position:absolute; right:18px; top:16px; color:#36512e; font-size:10px; gap:5px; align-items:center; }
+.room.upgraded .owned-tool { display:flex; }
+.owned-tool span { color:#4d723b; }

@@ -521,6 +521,21 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
 @keyframes balance-pulse { 40% {color:#bafa89;transform:translateY(-2px)} }
 @media(prefers-reduced-motion:reduce) { .reward-pop,.tap-ring {display:none;} }
 
+/* Episode 4: a real, one-time upgrade. */
+.upgrade-card { border:1px solid #445c3d; border-radius:16px; padding:18px; background:linear-gradient(135deg,#24342a,#1a2630); margin-bottom:18px; }
+.upgrade-title { display:flex; gap:11px; align-items:center; }
+.upgrade-title .eyebrow { font-size:8px; margin-bottom:5px; }
+.tool-icon { display:grid; place-items:center; width:40px; height:40px; border-radius:11px; background:#354d2f; color:#b6ee8a; font-size:27px; }
+.tool-price { margin-left:auto; color:#d5efbd; font-size:15px; font-weight:750; }
+.upgrade-card>p { font-size:12px; color:#b3c5af; margin:14px 0; }
+.buy-button { width:100%; min-height:46px; border:1px solid #a9e870; border-radius:10px; background:#a9e870; color:#172614; font-weight:750; font-size:13px; }
+.buy-button:disabled { background:#28372e; border-color:#445548; color:#8fa68d; cursor:default; }
+.upgrade-card>.purchase-status { margin:10px 0 0; min-height:0; line-height:1.6; font-size:11px; color:#cef1b2; }
+.purchase-status:empty { display:none; }
+.owned-tool { display:none; position:absolute; right:18px; top:16px; color:#36512e; font-size:10px; gap:5px; align-items:center; }
+.room.upgraded .owned-tool { display:flex; }
+.owned-tool span { color:#4d723b; }
+
 </style>
   
   
@@ -529,12 +544,12 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
   <main class="game">
     <header class="masthead">
       <a class="brand" href="#" aria-label="한푼부터 부자까지 처음 화면"><span class="brand-mark" aria-hidden="true">₩</span> 한푼부터 부자까지</a>
-      <span class="chapter"><span class="live-dot"></span> CHAPTER 03</span>
+      <span class="chapter"><span class="live-dot"></span> CHAPTER 04</span>
     </header>
     <div class="layout">
       <section class="scene-panel" aria-label="작은 방">
         <div class="scene-heading"><span class="eyebrow">LEVEL 01 · 작은 작업실</span><h1>오늘의 한푼이<br>내일의 시작.</h1><p>작은 일을 하나씩 마치며 첫 100원을 모아보세요.</p></div>
-        <div class="room" id="room"><div class="room-badge">나의 공간 <span>작업실</span></div>
+        <div class="room" id="room"><div class="owned-tool" aria-hidden="true"><span>▰</span> 새 작업 도구</div><div class="room-badge">나의 공간 <span>작업실</span></div>
           <svg class="room-art" viewBox="0 0 660 420" role="img" aria-label="작은 책상에서 일을 시작하는 초록 옷의 캐릭터와 동전 저금통">
             <defs>
               <pattern id="wallpaper" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="1" fill="#d8dccd"/></pattern>
@@ -574,14 +589,14 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
       <section class="wallet-panel" aria-labelledby="walletHeading">
         <span class="eyebrow" id="walletHeading">TOTAL BALANCE · 보유 자금</span>
         <div class="balance"><span id="money">0</span><span class="unit">원</span></div>
-        <p class="balance-note">한 번의 작은 일, 한 걸음의 성장</p>
-        <div class="earn-area"><button class="earn-button" id="earnButton"><span class="button-icon" aria-hidden="true">✦</span><span>작은 일 하기</span><strong>+1원</strong></button><div class="effects-layer" id="effectsLayer" aria-hidden="true"></div></div><div class="reward-receipt"><span class="receipt-dot" aria-hidden="true"></span><span id="lastReward">첫 작은 일을 시작해보세요</span></div><div class="milestone" id="milestone" role="status" hidden>첫 100원 달성! 작은 일이 모였습니다.</div>
+        <p class="balance-note" id="rateNote">한 번의 작은 일, 한 걸음의 성장</p>
+        <div class="earn-area"><button class="earn-button" id="earnButton"><span class="button-icon" aria-hidden="true">✦</span><span>작은 일 하기</span><strong id="earnAmount">+1원</strong></button><div class="effects-layer" id="effectsLayer" aria-hidden="true"></div></div><div class="reward-receipt"><span class="receipt-dot" aria-hidden="true"></span><span id="lastReward">첫 작은 일을 시작해보세요</span></div><div class="milestone" id="milestone" role="status" hidden>누적 수입 100원 달성! 작은 일이 모였습니다.</div>
         <p class="keyboard-note">버튼을 클릭하거나, Tab으로 선택한 뒤 Enter 또는 Space</p>
-        <label class="feedback-setting"><span>클릭 효과</span><input id="feedbackToggle" type="checkbox" checked><span class="switch" aria-hidden="true"></span></label><p class="sr-only" id="inputStatus" role="status" aria-live="polite" aria-atomic="true"></p><section class="goal-card" aria-labelledby="goalHeading">
-          <div class="goal-header"><h2 id="goalHeading">첫 목표, 100원</h2><span id="goalState">시작 전</span></div>
-          <progress id="goalProgress" max="100" value="0" aria-label="첫 100원 목표 진행률"></progress>
+        <label class="feedback-setting"><span>클릭 효과</span><input id="feedbackToggle" type="checkbox" checked><span class="switch" aria-hidden="true"></span></label><p class="sr-only" id="inputStatus" role="status" aria-live="polite" aria-atomic="true"></p><section class="upgrade-card" aria-labelledby="toolHeading"><div class="upgrade-title"><span class="tool-icon" aria-hidden="true">⌁</span><div><span class="eyebrow">FIRST UPGRADE</span><h2 id="toolHeading">작업 도구</h2></div><span class="tool-price">50원</span></div><p id="toolState">클릭당 1원 → 2원</p><button id="buyTool" class="buy-button" disabled>구매까지 50원 필요</button><p class="purchase-status" id="purchaseStatus" role="status" aria-live="polite"></p></section><section class="goal-card" aria-labelledby="goalHeading">
+          <div class="goal-header"><h2 id="goalHeading">첫 목표, 누적 100원</h2><span id="goalState">시작 전</span></div>
+          <progress id="goalProgress" max="100" value="0" aria-label="누적 수입 100원 목표 진행률"></progress>
           <div class="goal-numbers"><span id="goalAmount">0 / 100원</span><span id="remaining">100원 남음</span></div>
-          <p id="goalMessage">처음 모으는 돈은 직접 벌어봅니다.</p>
+          <p id="goalMessage">쓴 돈을 포함해 총 100원을 벌어보세요.</p>
         </section>
         <div class="session-row"><span>이번에 마친 작은 일</span><strong><span id="workCount">0</span>회</strong></div>
         <div class="prototype-note"><span>프로토타입 · 저장 기능 준비 중</span><p>지금은 직접 클릭해서 버는 단계입니다. 새로고침하면 처음부터 시작합니다.</p></div>
@@ -589,7 +604,7 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
         <p class="reset-notice" id="resetNotice" role="status" aria-live="polite"></p>
       </section>
     </div>
-    <footer class="page-foot"><span>한푼부터 부자까지</span><span>제작기 03 · v0.3.0</span></footer>
+    <footer class="page-foot"><span>한푼부터 부자까지</span><span>제작기 04 · v0.4.0</span></footer>
   </main>
 <script>
 /* Pure local economy rules: no DOM, timers, storage or network. */
@@ -600,35 +615,38 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const GOAL = 100;
-  const REWARD = 1;
-  function initialState() { return { money: 0, workCount: 0 }; }
+  const TOOL_PRICE = 50;
+  function initialState() { return { money: 0, workCount: 0, totalEarned: 0, toolOwned: false }; }
   function validate(state) {
-    if (!state || !Number.isSafeInteger(state.money) || state.money < 0 ||
-        !Number.isSafeInteger(state.workCount) || state.workCount < 0) {
-      throw new TypeError('money and workCount must be non-negative safe integers');
+    if (!state || ['money', 'workCount', 'totalEarned'].some(key => !Number.isSafeInteger(state[key]) || state[key] < 0) ||
+        typeof state.toolOwned !== 'boolean' || state.totalEarned < state.money) {
+      throw new TypeError('Invalid local economy state');
     }
   }
+  function income(state) { validate(state); return state.toolOwned ? 2 : 1; }
   function goalView(state) {
     validate(state);
-    return {
-      complete: state.money >= GOAL,
-      progress: Math.min(state.money, GOAL),
-      remaining: Math.max(0, GOAL - state.money)
-    };
+    return { complete: state.totalEarned >= GOAL, progress: Math.min(state.totalEarned, GOAL), remaining: Math.max(0, GOAL - state.totalEarned) };
   }
   function earn(state) {
-    validate(state);
-    if (state.money > Number.MAX_SAFE_INTEGER - REWARD || state.workCount === Number.MAX_SAFE_INTEGER) {
+    const reward = income(state);
+    if (state.money > Number.MAX_SAFE_INTEGER - reward || state.totalEarned > Number.MAX_SAFE_INTEGER - reward || state.workCount === Number.MAX_SAFE_INTEGER) {
       return { state: { ...state }, reward: 0, goalReached: false };
     }
-    const next = { money: state.money + REWARD, workCount: state.workCount + 1 };
-    return {
-      state: next,
-      reward: REWARD,
-      goalReached: state.money < GOAL && next.money >= GOAL
-    };
+    const next = { ...state, money: state.money + reward, workCount: state.workCount + 1, totalEarned: state.totalEarned + reward };
+    return { state: next, reward, goalReached: state.totalEarned < GOAL && next.totalEarned >= GOAL };
   }
-  return Object.freeze({ GOAL, REWARD, initialState, goalView, earn });
+  function toolView(state) {
+    validate(state);
+    return { owned: state.toolOwned, canBuy: !state.toolOwned && state.money >= TOOL_PRICE, shortage: Math.max(0, TOOL_PRICE - state.money), price: TOOL_PRICE };
+  }
+  function buyTool(state) {
+    validate(state);
+    if (state.toolOwned) return { state: { ...state }, purchased: false, reason: 'owned', spent: 0 };
+    if (state.money < TOOL_PRICE) return { state: { ...state }, purchased: false, reason: 'insufficient', spent: 0 };
+    return { state: { ...state, money: state.money - TOOL_PRICE, toolOwned: true }, purchased: true, reason: 'purchased', spent: TOOL_PRICE };
+  }
+  return Object.freeze({ GOAL, TOOL_PRICE, initialState, income, goalView, earn, toolView, buyTool });
 });
 
 (() => {
@@ -651,10 +669,17 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
     get('money').textContent = state.money.toLocaleString('ko-KR');
     get('workCount').textContent = state.workCount.toLocaleString('ko-KR');
     get('goalProgress').value = view.progress;
-    get('goalAmount').textContent = `${view.progress} / ${goal}원`;
+    get('goalAmount').textContent = `누적 ${state.totalEarned.toLocaleString('ko-KR')} / ${goal}원`;
+    const tool = economy.toolView(state);
+    get('earnAmount').textContent = `+${economy.income(state)}원`;
+    get('rateNote').textContent = `작은 일 한 번에 ${economy.income(state)}원`;
+    get('buyTool').disabled = !tool.canBuy;
+    get('buyTool').textContent = tool.owned ? '구매 완료' : tool.canBuy ? '작업 도구 구매 · 50원' : `구매까지 ${tool.shortage}원 필요`;
+    get('toolState').textContent = tool.owned ? '보유 중 · 클릭당 2원' : '클릭당 1원 → 2원';
+    get('room').classList.toggle('upgraded', tool.owned);
     get('remaining').textContent = complete ? '첫 목표 달성' : `${view.remaining}원 남음`;
-    get('goalState').textContent = complete ? '달성!' : state.money === 0 ? '시작 전' : '모으는 중';
-    get('goalMessage').textContent = complete ? '첫 100원을 직접 모았습니다. 계속 일을 할 수도 있어요.' : '처음 모으는 돈은 직접 벌어봅니다.';
+    get('goalState').textContent = complete ? '달성!' : state.totalEarned === 0 ? '시작 전' : '모으는 중';
+    get('goalMessage').textContent = complete ? '누적 수입 100원 달성. 구매해도 기록은 남습니다.' : '쓴 돈을 포함해 총 100원을 벌어보세요.';
     get('sceneMessage').textContent = complete ? '첫 100원. 이제 다음 단계를 생각해볼 차례입니다.' : '아직 작지만, 여기서 시작합니다.';
     card.classList.toggle('complete', complete);
   }
@@ -728,12 +753,23 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
     if (event.repeat && ['Enter', ' ', 'Spacebar'].includes(event.key)) event.preventDefault();
   });
 
+  get('buyTool').addEventListener('click', () => {
+    const result = economy.buyTool(state);
+    if (!result.purchased) return;
+    state = result.state;
+    clearFeedback();
+    render();
+    get('lastReward').textContent = '−50원 · 작업 도구 구매';
+    get('purchaseStatus').textContent = '작업 도구를 샀습니다. 이제 한 번에 2원을 법니다.';
+  });
+
   get('feedbackToggle').addEventListener('change', clearFeedback);
   reducedMotion.addEventListener('change', clearFeedback);
   get('resetButton').addEventListener('click', () => {
     state = economy.initialState();
     clearFeedback();
     get('lastReward').textContent = '첫 작은 일을 시작해보세요';
+    get('purchaseStatus').textContent = '';
     render();
     get('resetNotice').textContent = '작은 방에서 다시 시작합니다.';
   });
