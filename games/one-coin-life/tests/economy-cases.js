@@ -24,6 +24,18 @@
     check('총 75회 작업 → 보유 50원 · 누적 100원',()=>{let s=e.buyTool(earn(50)).state;for(let i=0;i<25;i++)s=e.earn(s).state;eq(s.money,50);eq(s.totalEarned,100);eq(s.workCount,75);});
     check('도구 수입 2원은 상한 넘기기 전에 중단',()=>{const s={...at(Number.MAX_SAFE_INTEGER-1),toolOwned:true};eq(e.earn(s).reward,0);});
     check('재시작 시 도구 미보유',()=>eq(e.initialState().toolOwned,false));
+    check('99원 고용 실패 · 차감 없음',()=>{const r=e.hireWorker(at(99));eq(r.hired,false);eq(r.state.money,99);});
+    check('100원 고용 → 보유 0 · 누적 100 유지',()=>{const r=e.hireWorker(Object.freeze(at(100)));eq(r.hired,true);eq(r.state.money,0);eq(r.state.totalEarned,100);eq(e.goalView(r.state).complete,true);});
+    check('직원 중복 고용 · 추가 차감 없음',()=>{const s=e.hireWorker(at(200)).state;eq(e.hireWorker(s).state,s);eq(e.hireWorker(s).spent,0);});
+    check('직원 없이 시간만 지나면 수입 0',()=>eq(e.advance(at(0),100000).reward,0));
+    check('999ms 무수입 · 다음 1ms에 1원',()=>{const a=e.advance(e.hireWorker(at(100)).state,999);eq(a.reward,0);eq(e.advance(a.state,1).reward,1);});
+    check('타이머가 3.7초 늦어도 3원 · 700ms 유지',()=>{const r=e.advance(e.hireWorker(at(100)).state,3700);eq(r.reward,3);eq(r.state.workerRemainderMs,700);eq(r.state.workCount,100);});
+    check('250ms 40회와 10초 한 번의 계산 동일',()=>{const s=e.hireWorker(at(100)).state;let a=s;for(let i=0;i<40;i++)a=e.advance(a,250).state;eq(a,e.advance(s,10000).state);});
+    check('클릭 수입과 직원 수입 분리',()=>{let s=e.advance(e.hireWorker(at(100)).state,10000).state;s=e.earn(s).state;eq(s.money,11);eq(s.workerEarned,10);eq(s.totalEarned,111);eq(s.workCount,101);});
+    check('직원 수입도 안전 정수 상한 보호',()=>{const s={...at(Number.MAX_SAFE_INTEGER-1),workerOwned:true};const r=e.advance(s,10000);eq(r.reward,1);eq(r.state.totalEarned,Number.MAX_SAFE_INTEGER);});
+    check('시간 계산 이전 상태 불변',()=>{const s=Object.freeze(e.hireWorker(at(100)).state);e.advance(s,1000);eq(s.money,0);eq(s.workerEarned,0);});
+    check('음수·소수 시간 입력 거부',()=>{for(const t of [-1,0.5,NaN,Infinity]){let rejected=false;try{e.advance(at(0),t);}catch{rejected=true;}eq(rejected,true);}});
+    check('재시작 시 직원·직원 수입·남은 시간 초기화',()=>{const s=e.initialState();eq(s.workerOwned,false);eq(s.workerEarned,0);eq(s.workerRemainderMs,0);});
     return results;
   }
   if(typeof module==='object'&&module.exports)module.exports=runEconomyChecks;else root.runEconomyChecks=runEconomyChecks;

@@ -1,6 +1,6 @@
 # 한푼부터 부자까지
 
-하나의 게임을 클릭 프로토타입에서 공개 가능한 방치형 웹 게임으로 발전시키는 연재 프로젝트입니다. 현재는 제작기 01, **v0.4.0**입니다.
+하나의 게임을 클릭 프로토타입에서 공개 가능한 방치형 웹 게임으로 발전시키는 연재 프로젝트입니다. 현재는 제작기 05, **v0.5.0**입니다.
 
 ## 현재 버전 실행
 
@@ -9,12 +9,12 @@
 분리된 소스를 확인하려면:
 
 ```sh
-git clone --depth 1 --branch one-coin-life-ep04 https://github.com/edyedyhyun/edyedy-vibecoding.git one-coin-life-ep04
-cd one-coin-life-ep04/games/one-coin-life
+git clone --depth 1 --branch one-coin-life-ep05 https://github.com/edyedyhyun/edyedy-vibecoding.git one-coin-life-ep05
+cd one-coin-life-ep05/games/one-coin-life
 python3 -m http.server 8000
 ```
 
-Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`를 `python`으로 바꾸세요. 브라우저에서 `http://localhost:8000`을 엽니다. 이후 편의 코드가 달라져도 `one-coin-life-ep04` 태그에서 이 편의 상태를 그대로 받을 수 있습니다.
+Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`를 `python`으로 바꾸세요. 브라우저에서 `http://localhost:8000`을 엽니다. 이후 편의 코드가 달라져도 `one-coin-life-ep05` 태그에서 이 편의 상태를 그대로 받을 수 있습니다.
 
 ## 제작기 01의 기능
 
@@ -25,7 +25,7 @@ Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`�
 - 다시 시작 버튼으로 0원으로 돌아갑니다.
 - 390px 화면에서 가로 넘침 없이 배치됩니다.
 
-**아직 자동 수입, 강화, 저장, 로그인 기능이 없습니다. 새로고침하면 0원으로 돌아갑니다.** 이 버전은 방치형 게임의 첫 화면을 만드는 단계이며, 서비스 완성판이 아닙니다. 금액은 게임 안의 가상 재화입니다.
+**작업 도구와 첫 직원 자동 수입이 있습니다. 저장·로그인·오프라인 보상은 아직 없습니다. 새로고침하면 0원으로 돌아갑니다.** 이 버전은 방치형 게임의 첫 화면을 만드는 단계이며, 서비스 완성판이 아닙니다. 금액은 게임 안의 가상 재화입니다.
 
 ## 직접 확인할 순서
 
@@ -82,3 +82,16 @@ python3 build.py
 50원짜리 작업 도구를 한 번 사면 작업당 수입이 1원에서 2원으로 증가합니다. 미보유·잔액49원 이하는 구매 불가. 구매 후 재구매와 추가 차감은 없습니다. 목표는 누적 수입100원이며 보유금과 구분합니다. totalEarned는 수입에만 증가하고 구매시 유지합니다. reset/reload는 도구까지 초기화합니다. 저장·자동수입은 아직 없습니다.
 
 검증 18개: node tests/economy.test.cjs 및 브라우저 checks.html. 입력/구매 연동: node tests/input-feedback.test.cjs. 실제 브라우저49→50→구매0→1회2원→총75회/보유50/누적100,모바일390px폭 확인. 실제휴대폰터치미검증. 이전 태그 one-coin-life-ep03은3편 상태를 보존합니다.
+
+## 제작기 5: 첫 직원과 자동 수입
+
+- 100원에 직원 1명을 한 번 고용. 화면이 보이는 동안 초당 1원, 회수에 100초가 필요한 첫 기준값입니다. 장기 밸런스 검증은 아직입니다.
+- 직접 번 돈/직원이 번 돈/보유금/누적 수입 구분. 자동 수입은 작업 횟수를 늘리지 않습니다.
+- performance.now()의 경과 시간을 계산하고 1초 미만의 나머지 시간을 보존합니다. 콜백 횟수를 돈으로 사용하지 않습니다.
+- visibilitychange와 BFCache 복귀 때 시간을 다시 잡습니다. 다른 탭·창 닫힘 동안 보상은 제공하지 않습니다. 브라우저가 visible로 보고하는 화면에 한합니다.
+- 타이머는 앱 시작 때 하나만 생성합니다. 재고용/리셋 때 추가하지 않습니다.
+- 새로고침/리셋은 직원과 재화를 초기화합니다. 서버 검증이나 서비스 완성판은 아닙니다.
+
+검증: `node tests/economy.test.cjs` 30개, `node tests/input-feedback.test.cjs`, `node tests/worker-timing.test.cjs`. 지연/숨김·복귀/BFCache/리셋은 가상 시계로 확인. 브라우저에서 99원 고용 불가→100원 고용→0원→클릭 없이 직원 25원·작업100회·누적125원을 실제 확인했습니다. IAB는 여러 탭을 visible로 보고하므로 실제 숨김 동작·실제 휴대폰은 미검증입니다.
+
+제작기 4는 `one-coin-life-ep04`, 이번 편은 `one-coin-life-ep05` 태그로 보존합니다.

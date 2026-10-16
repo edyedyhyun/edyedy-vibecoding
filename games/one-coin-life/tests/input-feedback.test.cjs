@@ -20,10 +20,10 @@ function environment(reduce = false) {
     };
   }
   const get = id => { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); };
-  const document = { getElementById: get, querySelector: () => get('goal-card'), createElement: element };
+  const document = { hidden:false, addEventListener(){}, getElementById: get, querySelector: () => get('goal-card'), createElement: element };
   vm.runInNewContext(readFileSync(join(__dirname, '../app.js'), 'utf8'), {
     CoinEconomy: require('../economy.js'), document, matchMedia: () => ({ matches: reduce, addEventListener(){} }),
-    setTimeout: () => 1, clearTimeout(){}
+    performance:{now:()=>0},setInterval:()=>1,addEventListener(){},setTimeout: () => 1, clearTimeout(){}
   });
   return { get, click: () => get('earnButton').emit('click', { detail: 1, clientX: 160, clientY: 130 }) };
 }

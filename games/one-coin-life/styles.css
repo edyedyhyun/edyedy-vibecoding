@@ -527,3 +527,10 @@ button:focus-visible,a:focus-visible { outline-color:#c2f29c; }
 .owned-tool { display:none; position:absolute; right:18px; top:16px; color:#36512e; font-size:10px; gap:5px; align-items:center; }
 .room.upgraded .owned-tool { display:flex; }
 .owned-tool span { color:#4d723b; }
+
+/* Episode 5: separate manual and worker income. */
+.worker-card{margin:0 0 18px;border:1px solid #4b5d82;border-radius:16px;padding:18px;background:linear-gradient(135deg,#253149,#192431)}
+.staff-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:#36486c;color:#c2d3ff;font-size:26px}
+.worker-card>p{font-size:12px;line-height:1.6;color:#b5c4db;margin:14px 0}.worker-card .buy-button{background:#b5cbff;border-color:#b5cbff;color:#1b2a48}.worker-card .buy-button:disabled{background:#29354a;border-color:#43536e;color:#9baeca}
+.worker-card progress{height:4px;margin:15px 0}.worker-card progress::-webkit-progress-value{background:#b5cbff}.income-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px}.income-summary>span{display:grid;gap:6px;padding:12px;background:#172334;border-radius:10px;color:#a2b4cb;font-size:10px}.income-summary strong{font-size:20px;color:#e5edff;font-variant-numeric:tabular-nums}
+.worker-card #workerReceipt{font-size:11px;color:#c0d6ff}.worker-card .worker-note{font-size:10px;color:#9eafc6;margin-bottom:0}.staff-badge{display:none;color:#e8f2ff;background:#263b55;padding:9px 12px;border-radius:9px;position:absolute;bottom:16px;left:18px;font-size:11px}.room.staffed .staff-badge{display:block}.staff-badge span{color:#b5cbff;margin-right:5px}

@@ -11,6 +11,18 @@
   let animationTimer;
   let statusTimer;
   let milestoneTimer;
+  let lastTick = performance.now();
+  let pageActive = !document.hidden;
+  function settle(now = performance.now()) {
+    const elapsed = Math.max(0, Math.floor(now - lastTick));
+    // Retain the sub-millisecond fraction; rebasing while hidden prevents offline rewards.
+    lastTick += elapsed;
+    if (!pageActive) return;
+    const result = economy.advance(state, elapsed);
+    state = result.state;
+    if (result.reward > 0) get('workerReceipt').textContent = `+${result.reward}원 · 직원 수입`;
+  }
+
 
   function render() {
     const view = economy.goalView(state);
@@ -26,6 +38,14 @@
     get('buyTool').textContent = tool.owned ? '구매 완료' : tool.canBuy ? '작업 도구 구매 · 50원' : `구매까지 ${tool.shortage}원 필요`;
     get('toolState').textContent = tool.owned ? '보유 중 · 클릭당 2원' : '클릭당 1원 → 2원';
     get('room').classList.toggle('upgraded', tool.owned);
+    const worker = economy.workerView(state);
+    get('hireWorker').disabled = !worker.canHire;
+    get('hireWorker').textContent = worker.owned ? '고용 완료 · 직원 1명' : worker.canHire ? '첫 직원 고용 · 100원' : `고용까지 ${worker.shortage}원 필요`;
+    get('workerState').textContent = worker.owned ? (pageActive ? '근무 중 · 초당 1원' : '다른 탭에서는 쉬는 중') : '직원 1명 · 초당 1원';
+    get('workerEarned').textContent = state.workerEarned.toLocaleString('ko-KR');
+    get('manualEarned').textContent = (state.totalEarned - state.workerEarned).toLocaleString('ko-KR');
+    get('workerProgress').value = state.workerOwned ? state.workerRemainderMs : 0;
+    get('room').classList.toggle('staffed', worker.owned);
     get('remaining').textContent = complete ? '첫 목표 달성' : `${view.remaining}원 남음`;
     get('goalState').textContent = complete ? '달성!' : state.totalEarned === 0 ? '시작 전' : '모으는 중';
     get('goalMessage').textContent = complete ? '누적 수입 100원 달성. 구매해도 기록은 남습니다.' : '쓴 돈을 포함해 총 100원을 벌어보세요.';
@@ -86,6 +106,7 @@
   // One income entry point: native click covers mouse, touch and keyboard.
   // There is deliberately no additional income on pointerdown or touchend.
   button.addEventListener('click', event => {
+    settle();
     const result = economy.earn(state);
     if (result.reward === 0) return;
     state = result.state;
@@ -103,6 +124,7 @@
   });
 
   get('buyTool').addEventListener('click', () => {
+    settle();
     const result = economy.buyTool(state);
     if (!result.purchased) return;
     state = result.state;
@@ -112,10 +134,33 @@
     get('purchaseStatus').textContent = '작업 도구를 샀습니다. 이제 한 번에 2원을 법니다.';
   });
 
+  get('hireWorker').addEventListener('click', () => {
+    settle();
+    const result = economy.hireWorker(state);
+    if (!result.hired) return;
+    state = result.state;
+    lastTick = performance.now();
+    get('workerReceipt').textContent = '−100원 · 첫 직원 고용';
+    render();
+  });
+  // Exactly one timer for the whole session. Hiring and resetting never create another.
+  setInterval(() => { settle(); render(); }, 250);
+  document.addEventListener('visibilitychange', () => {
+    settle();
+    pageActive = !document.hidden;
+    lastTick = performance.now();
+    render();
+  });
+  // BFCache restores must not pay for time spent away.
+  addEventListener('pagehide', () => { settle(); pageActive = false; });
+  addEventListener('pageshow', () => { pageActive = !document.hidden; lastTick = performance.now(); render(); });
+
   get('feedbackToggle').addEventListener('change', clearFeedback);
   reducedMotion.addEventListener('change', clearFeedback);
   get('resetButton').addEventListener('click', () => {
     state = economy.initialState();
+    lastTick = performance.now();
+    get('workerReceipt').textContent = '아직 직원 수입이 없습니다';
     clearFeedback();
     get('lastReward').textContent = '첫 작은 일을 시작해보세요';
     get('purchaseStatus').textContent = '';
