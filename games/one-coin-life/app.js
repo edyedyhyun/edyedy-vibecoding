@@ -1,7 +1,11 @@
 (() => {
   'use strict';
   const economy = CoinEconomy;
-  let state = economy.initialState();
+  const store = CoinSave.createStore(() => localStorage);
+  const restored = store.load();
+  let state = restored.state;
+  // Preserve damaged/future-format saves until the player explicitly clears them.
+  let saveBlocked = ['invalid','unsupported'].includes(restored.status);
   const goal = economy.GOAL;
   const get = id => document.getElementById(id);
   const card = document.querySelector('.goal-card');
@@ -13,6 +17,12 @@
   let milestoneTimer;
   let lastTick = performance.now();
   let pageActive = !document.hidden;
+  function persist() {
+    if (saveBlocked) return;
+    const result = store.save(state);
+    get('saveStatus').textContent = result.ok ? '이 브라우저에 저장됨' : '저장 실패 · 이번 진행은 새로고침하면 잃을 수 있습니다';
+    get('saveStatus').classList.toggle('save-error', !result.ok);
+  }
   function settle(now = performance.now()) {
     const elapsed = Math.max(0, Math.floor(now - lastTick));
     // Retain the sub-millisecond fraction; rebasing while hidden prevents offline rewards.
@@ -20,7 +30,7 @@
     if (!pageActive) return;
     const result = economy.advance(state, elapsed);
     state = result.state;
-    if (result.reward > 0) get('workerReceipt').textContent = `+${result.reward}원 · 직원 수입`;
+    if (result.reward > 0) { get('workerReceipt').textContent = `+${result.reward}원 · 직원 수입`; persist(); }
   }
 
 
@@ -110,6 +120,7 @@
     const result = economy.earn(state);
     if (result.reward === 0) return;
     state = result.state;
+    persist();
     get('resetNotice').textContent = '';
     render();
     showFeedback(event, result.reward);
@@ -128,6 +139,7 @@
     const result = economy.buyTool(state);
     if (!result.purchased) return;
     state = result.state;
+    persist();
     clearFeedback();
     render();
     get('lastReward').textContent = '−50원 · 작업 도구 구매';
@@ -139,6 +151,7 @@
     const result = economy.hireWorker(state);
     if (!result.hired) return;
     state = result.state;
+    persist();
     lastTick = performance.now();
     get('workerReceipt').textContent = '−100원 · 첫 직원 고용';
     render();
@@ -147,18 +160,31 @@
   setInterval(() => { settle(); render(); }, 250);
   document.addEventListener('visibilitychange', () => {
     settle();
+    persist();
     pageActive = !document.hidden;
     lastTick = performance.now();
     render();
   });
   // BFCache restores must not pay for time spent away.
-  addEventListener('pagehide', () => { settle(); pageActive = false; });
+  addEventListener('pagehide', () => { settle(); persist(); pageActive = false; });
   addEventListener('pageshow', () => { pageActive = !document.hidden; lastTick = performance.now(); render(); });
 
   get('feedbackToggle').addEventListener('change', clearFeedback);
   reducedMotion.addEventListener('change', clearFeedback);
-  get('resetButton').addEventListener('click', () => {
+  get('resetButton').addEventListener('click', () => get('resetDialog').showModal());
+  get('cancelReset').addEventListener('click', () => get('resetDialog').close());
+  get('confirmReset').addEventListener('click', () => {
+    get('resetDialog').close();
+    if (!store.clear().ok) {
+      get('saveStatus').textContent = '기록을 지우지 못해 초기화하지 않았습니다. 브라우저 저장 권한을 확인해 주세요.';
+      get('saveStatus').classList.add('save-error');
+      return;
+    }
+    saveBlocked = false;
     state = economy.initialState();
+    get('restoreNotice').textContent = '새 기록으로 시작합니다.';
+    get('saveStatus').textContent = '저장 기록을 지웠습니다';
+    get('saveStatus').classList.remove('save-error');
     lastTick = performance.now();
     get('workerReceipt').textContent = '아직 직원 수입이 없습니다';
     clearFeedback();
@@ -167,5 +193,15 @@
     render();
     get('resetNotice').textContent = '작은 방에서 다시 시작합니다.';
   });
+  const notices = {
+    empty: '처음 시작합니다. 작은 일부터 해보세요.',
+    restored: '이전 기록을 불러왔습니다. 자리를 비운 동안의 보상은 아직 없습니다.',
+    invalid: '저장 데이터가 올바르지 않아 불러오지 않았습니다. 기존 기록은 보존합니다. 새로 저장하려면 기록을 지우고 다시 시작하세요.',
+    unsupported: '다른 버전의 저장 데이터입니다. 기존 기록을 보존하며 이번 진행은 저장하지 않습니다. 기록을 지우면 새로 시작할 수 있습니다.',
+    unavailable: '브라우저 저장소에 접근하지 못했습니다. 지금 플레이할 수 있지만 진행이 저장되지 않을 수 있습니다.'
+  };
+  get('restoreNotice').textContent = notices[restored.status];
+  get('saveStatus').textContent = restored.status === 'restored' ? '저장 기록 불러오기 완료' : saveBlocked ? '기존 기록 보호 중 · 자동 저장 중지' : restored.status === 'unavailable' ? '저장소 접근 불가' : '아직 저장할 진행이 없습니다';
+  get('saveStatus').classList.toggle('save-error', ['invalid','unsupported','unavailable'].includes(restored.status));
   render();
 })();

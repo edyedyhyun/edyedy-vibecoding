@@ -1,6 +1,6 @@
 # 한푼부터 부자까지
 
-하나의 게임을 클릭 프로토타입에서 공개 가능한 방치형 웹 게임으로 발전시키는 연재 프로젝트입니다. 현재는 제작기 05, **v0.5.0**입니다.
+하나의 게임을 클릭 프로토타입에서 공개 가능한 방치형 웹 게임으로 발전시키는 연재 프로젝트입니다. 현재는 제작기 06, **v0.6.0**입니다.
 
 ## 현재 버전 실행
 
@@ -9,12 +9,12 @@
 분리된 소스를 확인하려면:
 
 ```sh
-git clone --depth 1 --branch one-coin-life-ep05 https://github.com/edyedyhyun/edyedy-vibecoding.git one-coin-life-ep05
-cd one-coin-life-ep05/games/one-coin-life
+git clone --depth 1 --branch one-coin-life-ep06 https://github.com/edyedyhyun/edyedy-vibecoding.git one-coin-life-ep06
+cd one-coin-life-ep06/games/one-coin-life
 python3 -m http.server 8000
 ```
 
-Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`를 `python`으로 바꾸세요. 브라우저에서 `http://localhost:8000`을 엽니다. 이후 편의 코드가 달라져도 `one-coin-life-ep05` 태그에서 이 편의 상태를 그대로 받을 수 있습니다.
+Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`를 `python`으로 바꾸세요. 브라우저에서 `http://localhost:8000`을 엽니다. 이후 편의 코드가 달라져도 `one-coin-life-ep06` 태그에서 이 편의 상태를 그대로 받을 수 있습니다.
 
 ## 제작기 01의 기능
 
@@ -25,7 +25,7 @@ Windows에서 Python 명령이 `python`이라면 마지막 명령의 `python3`�
 - 다시 시작 버튼으로 0원으로 돌아갑니다.
 - 390px 화면에서 가로 넘침 없이 배치됩니다.
 
-**작업 도구와 첫 직원 자동 수입이 있습니다. 저장·로그인·오프라인 보상은 아직 없습니다. 새로고침하면 0원으로 돌아갑니다.** 이 버전은 방치형 게임의 첫 화면을 만드는 단계이며, 서비스 완성판이 아닙니다. 금액은 게임 안의 가상 재화입니다.
+**작업 도구·첫 직원·브라우저 자동 저장이 있습니다. 로그인·오프라인 보상은 아직 없습니다. 저장이 허용된 같은 브라우저와 주소에서 진행을 이어갑니다.** 이 버전은 방치형 게임의 첫 화면을 만드는 단계이며, 서비스 완성판이 아닙니다. 금액은 게임 안의 가상 재화입니다.
 
 ## 직접 확인할 순서
 
@@ -94,4 +94,22 @@ python3 build.py
 
 검증: `node tests/economy.test.cjs` 30개, `node tests/input-feedback.test.cjs`, `node tests/worker-timing.test.cjs`. 지연/숨김·복귀/BFCache/리셋은 가상 시계로 확인. 브라우저에서 99원 고용 불가→100원 고용→0원→클릭 없이 직원 25원·작업100회·누적125원을 실제 확인했습니다. IAB는 여러 탭을 visible로 보고하므로 실제 숨김 동작·실제 휴대폰은 미검증입니다.
 
-제작기 4는 `one-coin-life-ep04`, 이번 편은 `one-coin-life-ep05` 태그로 보존합니다.
+제작기 4는 `one-coin-life-ep04`, 5편은 `one-coin-life-ep05`, 현재6편은 `one-coin-life-ep06` 태그로 보존합니다.
+
+## 제작기 6: 저장과 불러오기
+
+`save.js`가 저장 경계를 맡습니다. `one-coin-life.save` 키에 `{version:1,savedAt,state}`를 JSON으로 기록합니다. 보유금/작업횟수/누적수입/도구/직원/직원수입/1초 미만 근무시간을 저장하고, 클릭·구매·고용·직원수입·페이지이탈 때 갱신합니다. 화면을 읽거나 그리는 코드는 저장 형식과 분리했습니다.
+
+- 최초 시작 시 읽고 검증합니다. 금액/횟수는 0 이상의 안전 정수, 보유 여부는 boolean, 지출은 실제 구매 합계와 일치해야 합니다. 알려진 필드만 가져옵니다. 이 검사는 조작 방지나 서버 검증이 아닙니다.
+- 깨진 JSON/불일치/다른 버전은 기존 문자열을 보존하고 자동 저장을 중지합니다. 확인 대화상자로 해당 게임 키를 지운 뒤 새로 시작할 수 있습니다. 다른 사이트 데이터는 지우지 않습니다.
+- 저장소 예외는 화면에 실패로 표시하며 메모리 플레이를 허용합니다. 삭제 실패 때에는 기존 진행도 초기화하지 않습니다.
+- `savedAt`은 기록 정보일 뿐 오프라인 보상에 사용하지 않습니다. 로드 시 타이머 기준은 현재 시점으로 시작합니다.
+- 한 창에서 실행하세요. 여러 탭의 저장 충돌 조정, 계정 동기화, 클라우드 백업은 후속 작업입니다. 브라우저 데이터 삭제/시크릿 모드 종료로 기록을 잃을 수 있습니다.
+
+### 저장 검증을 위한 로컬 실행
+
+HTML 파일을 직접 여는 `file:` 주소의 localStorage 동작은 브라우저마다 보장되지 않습니다([MDN](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage)). 파일 이동이나 브라우저 변경도 같은 기록을 뜻하지 않습니다. 진행 보존을 확인하려면 위 Python 서버 방법으로 실행한 뒤 **같은 http://localhost:8000 주소**로 다시 접속하세요. `localhost`와 `127.0.0.1`, 다른 포트·브라우저는 서로 다른 저장 영역입니다. 단일 `one-coin-life.html`도 이 서버에서 열 수 있고 외부 인터넷 연결은 필요하지 않습니다.
+
+### 검증
+
+`node tests/save.test.cjs` 저장 규칙14조건, `node tests/save-app.test.cjs` 실제앱연동, 기존계산30조건·입력·타이머테스트를 통과했습니다. 저장소 접근/쓰기/삭제 실패는 테스트 대역으로 재현했습니다. 브라우저에서는17원/17회새로고침보존,도구·직원·누적150/작업100복원,깨진JSON보존과미지원버전차단,초기화취소/확정확인했습니다. `tests/save-fixture.html`은 **고의로 게임 기록을 교체**하는개발용화면이므로실제진행을보관한브라우저에서사용하지마세요. 실제휴대폰/여러탭충돌은미검증입니다.

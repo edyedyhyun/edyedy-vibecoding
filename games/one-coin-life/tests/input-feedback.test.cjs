@@ -10,7 +10,7 @@ function environment(reduce = false) {
     const children = [];
     return {
       textContent: '', checked: true, hidden: true, style: {}, children,
-      classList: { add(){}, remove(){}, toggle(){} },
+      showModal(){},close(){},classList: { add(){}, remove(){}, toggle(){} },
       addEventListener(type, callback) { listeners[type] = callback; },
       emit(type, event = {}) { listeners[type]?.(event); },
       append(child) { children.push(child); child.remove = () => children.splice(children.indexOf(child), 1); },
@@ -22,7 +22,7 @@ function environment(reduce = false) {
   const get = id => { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); };
   const document = { hidden:false, addEventListener(){}, getElementById: get, querySelector: () => get('goal-card'), createElement: element };
   vm.runInNewContext(readFileSync(join(__dirname, '../app.js'), 'utf8'), {
-    CoinEconomy: require('../economy.js'), document, matchMedia: () => ({ matches: reduce, addEventListener(){} }),
+    CoinEconomy: require('../economy.js'),CoinSave:require('../save.js'),localStorage:{getItem:()=>null,setItem(){},removeItem(){}}, document, matchMedia: () => ({ matches: reduce, addEventListener(){} }),
     performance:{now:()=>0},setInterval:()=>1,addEventListener(){},setTimeout: () => 1, clearTimeout(){}
   });
   return { get, click: () => get('earnButton').emit('click', { detail: 1, clientX: 160, clientY: 130 }) };
@@ -49,7 +49,7 @@ assert.equal(e.get('effectsLayer').children.length,0);
 for (let i = 0; i < 99; i++) e.click();
 assert.equal(e.get('goalState').textContent,'달성!');
 assert.equal(e.get('milestone').hidden,false);
-e.get('resetButton').emit('click');
+e.get('resetButton').emit('click');e.get('confirmReset').emit('click');
 assert.equal(e.get('money').textContent,'0');
 assert.equal(e.get('milestone').hidden,true);
 console.log('Passed: rapid input, effect bound, income entry point, repeat guard, effects off, reduced motion, milestone/reset');
@@ -66,6 +66,6 @@ purchase.click();
 assert.equal(purchase.get('money').textContent,'2');
 assert.equal(purchase.get('earnAmount').textContent,'+2원');
 assert.equal(purchase.get('lastReward').textContent,'+2원 · 작업 완료');
-purchase.get('resetButton').emit('click');
+purchase.get('resetButton').emit('click');purchase.get('confirmReset').emit('click');
 assert.equal(purchase.get('earnAmount').textContent,'+1원');
 console.log('Passed: upgrade boundary, repeated purchase, reward text, reset');
